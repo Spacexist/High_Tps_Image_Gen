@@ -23,7 +23,7 @@ export function TaskMonitor({ tasks, total, busyTaskId, onCancel }: Props) {
       ) : (
         <div className="task-table">
           <div className="task-table__row task-table__head">
-            <span>UPDATED</span><span>STATUS</span><span>TASK / IMAGE</span><span>MODEL</span><span>KEY ID</span><span>ATTEMPT</span><span />
+            <span>UPDATED</span><span>STATUS</span><span>TASK / IMAGE</span><span>MODEL</span><span>KEY ID</span><span />
           </div>
           {tasks.map((task) => (
             <div className="task-table__row" key={task.id}>
@@ -31,13 +31,26 @@ export function TaskMonitor({ tasks, total, busyTaskId, onCancel }: Props) {
               <span className={`status status--${task.status}`}>{task.status.toUpperCase()}</span>
               <div className="task-identity">
                 <code title={task.id}>{task.id}</code>
-                <small>{task.input.blockId && task.input.imageId ? `${task.input.blockId}/${task.input.imageId}` : task.input.prompt}</small>
+                <small>
+                  {task.input.blockId && task.input.imageId
+                    ? `${task.input.blockId}/${task.input.imageId}`
+                    : task.input.prompt}
+                </small>
               </div>
               <code>{task.input.model}</code>
               <code title={task.keyID || ""}>{task.keyID || "WAITING"}</code>
-              <code>{task.attempts}{task.nextAttemptAt ? ` · ${time(task.nextAttemptAt)}` : ""}</code>
-              <button className="button button--small" disabled={busyTaskId === task.id || !["pending", "retry_wait"].includes(task.status)} onClick={() => void onCancel(task)}>取消</button>
-              {task.error && <small className="task-error">{task.error.code || "ERROR"} · {task.error.message}</small>}
+              <button
+                className="button button--small"
+                disabled={busyTaskId === task.id || task.status !== "pending"}
+                onClick={() => void onCancel(task)}
+              >
+                取消
+              </button>
+              {task.error && (
+                <small className="task-error">
+                  {task.error.code || "ERROR"} · {task.error.message}
+                </small>
+              )}
             </div>
           ))}
         </div>

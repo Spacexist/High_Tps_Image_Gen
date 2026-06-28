@@ -12,7 +12,7 @@ interface Props {
 }
 
 export function ImageCard({ blockId, image, disabled, onPromptChange, onRetry }: Props) {
-  const canRetry = ["ready", "failed", "cancelled"].includes(image.state.status);
+  const canGenerate = ["ready", "failed", "cancelled"].includes(image.state.status);
   return (
     <article className="image-card">
       <div className="image-card__top">
@@ -45,7 +45,6 @@ export function ImageCard({ blockId, image, disabled, onPromptChange, onRetry }:
 
       {image.state.error && <p className="error-text">{image.state.error.message}</p>}
       <div className="image-actions">
-        <span className="attempts">尝试 {image.state.attempts} 次</span>
         {image.outputUrl && (
           <button
             className="button button--ghost"
@@ -54,9 +53,9 @@ export function ImageCard({ blockId, image, disabled, onPromptChange, onRetry }:
             下载
           </button>
         )}
-        {canRetry && (
+        {canGenerate && (
           <button className="button button--small" disabled={disabled} onClick={onRetry}>
-            {image.state.status === "ready" ? "生成" : "重试"}
+            {image.state.status === "ready" ? "生成" : "重新生成"}
           </button>
         )}
       </div>

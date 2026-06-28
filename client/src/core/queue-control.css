@@ -1,0 +1,21 @@
+.queue-control { margin-bottom: 18px; }
+.queue-capacity-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.queue-capacity-grid > div { display: grid; gap: 6px; padding: 14px; border: 1px solid #252b30; border-radius: 9px; background: #0b0e11; }
+.queue-capacity-grid span { color: #626b72; font: .56rem "DM Mono", monospace; letter-spacing: .07em; }
+.queue-capacity-grid strong { font: 500 1.35rem "DM Mono", monospace; }
+.queue-capacity-grid .is-over { border-color: rgba(255,113,88,.35); background: rgba(255,113,88,.05); }
+.queue-capacity-grid .is-over strong { color: #ff806b; }
+.queue-resize-form { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: end; gap: 10px; margin-top: 12px; }
+.queue-resize-form label { display: grid; gap: 7px; }
+.queue-resize-form label > span { color: #717981; font: .6rem "DM Mono", monospace; letter-spacing: .07em; }
+.queue-resize-form input { width: 100%; height: 39px; color: #e5e9e3; background: #0b0e11; border: 1px solid #2a3035; border-radius: 8px; padding: 0 11px; outline: none; font: .72rem "DM Mono", monospace; }
+.queue-resize-form input:focus { border-color: #667347; box-shadow: 0 0 0 3px rgba(200,255,85,.05); }
+.queue-resize-note { margin: 12px 0 0; color: #626b72; font-size: .68rem; line-height: 1.6; }
+
+/* ATTEMPT 列已移除：Core 每个任务只执行一次。 */
+.task-table__row { grid-template-columns: 75px 90px minmax(210px, 1.5fr) minmax(120px, .7fr) minmax(180px, 1fr) 60px; min-width: 960px; }
+
+@media (max-width: 720px) {
+  .queue-capacity-grid { grid-template-columns: 1fr 1fr; }
+  .queue-resize-form { grid-template-columns: 1fr; }
+}

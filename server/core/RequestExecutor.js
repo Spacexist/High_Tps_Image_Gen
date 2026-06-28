@@ -1,16 +1,8 @@
-// 下游图片请求适配器：普通 JSON 生成和工作台 multipart 编辑共用超时、错误与重试语义。
+// 下游图片请求适配器：普通 JSON 生成和工作台 multipart 编辑都只调用一次下游。
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { request } from "undici";
 import { DownstreamError } from "../shared/errors.js";
-
-function parseRetryAfter(value) {
-  if (!value) return undefined;
-  const seconds = Number(value);
-  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1_000);
-  const date = Date.parse(value);
-  return Number.isFinite(date) ? Math.max(0, date - Date.now()) : undefined;
-}
 
 export class RequestExecutor {
   constructor({
@@ -37,25 +29,26 @@ export class RequestExecutor {
       const response = await this.requestFn(`${key.baseUrl}${endpoint}`, options);
       const text = await response.body.text();
       let body;
-      try { body = text ? JSON.parse(text) : null; } catch { body = { raw: text }; }
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        body = { raw: text };
+      }
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        const retryable = [408, 409, 425, 429].includes(response.statusCode) || response.statusCode >= 500;
         throw new DownstreamError(`Downstream returned HTTP ${response.statusCode}`, {
           downstreamStatus: response.statusCode,
-          retryable,
           responseBody: body,
-          retryAfterMs: parseRetryAfter(response.headers?.["retry-after"]),
         });
       }
       return body;
     } catch (error) {
       if (error instanceof DownstreamError) throw error;
       const timedOut = error?.name === "AbortError";
-      throw new DownstreamError(timedOut ? "Downstream request timed out" : "Downstream request failed", {
-        retryable: true,
-        cause: error,
-      });
+      throw new DownstreamError(
+        timedOut ? "Downstream request timed out" : "Downstream request failed",
+        { cause: error },
+      );
     } finally {
       clearTimeout(timer);
     }

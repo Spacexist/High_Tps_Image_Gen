@@ -27,11 +27,13 @@ export class WorkbenchStore {
       readJson(this.blocksFile, []),
       readJson(this.tasksFile, {}),
     ]);
-    // 内存队列无法跨进程恢复，重启后把未结束任务放回 ready，允许用户重新提交。
+    // 内存队列无法跨进程恢复；retry_wait 仅用于兼容旧版缓存，不再是当前 Core 状态。
     for (const task of Object.values(this.tasks)) {
       if (["pending", "running", "retry_wait"].includes(task.status)) {
         Object.assign(task, { status: "ready", taskId: null, error: null });
       }
+      // 清理旧版自动重试计数，避免前端继续展示已经移除的语义。
+      delete task.attempts;
     }
     await this.save();
     return this;

@@ -12,8 +12,7 @@ test("status explains when queued tasks cannot run because KeyPool is empty", as
     keyStorePath: path.join(cacheDir, "keys.json"),
     config: {
       server: { host: "127.0.0.1", port: 3000 },
-      queue: { maxSize: 100 },
-      retry: { maxAttempts: 2, baseDelayMs: 10 },
+      queue: { maxPending: 100 },
       health: { enabled: false, intervalMs: 60_000, timeoutMs: 500 },
       workbench: { cachePath: cacheDir },
     },
@@ -36,6 +35,8 @@ test("status explains when queued tasks cannot run because KeyPool is empty", as
     assert.equal(statusResponse.statusCode, 200);
     const status = statusResponse.json();
     assert.equal(status.queue.waiting, 1);
+    assert.equal(status.queue.maxPending, 100);
+    assert.equal(status.queue.remainingCapacity, 99);
     assert.equal(status.keys.total, 0);
     assert.equal(status.diagnostics.code, "NO_KEYS_REGISTERED");
     assert.equal(status.diagnostics.severity, "error");

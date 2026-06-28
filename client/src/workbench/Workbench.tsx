@@ -22,7 +22,6 @@ function now() {
 function levelForTask(task: CoreTask): BlockLogEntry["level"] {
   if (task.status === "completed") return "success";
   if (task.status === "failed" || task.status === "cancelled") return "error";
-  if (task.status === "retry_wait") return "warning";
   return "info";
 }
 
@@ -94,8 +93,8 @@ export function Workbench({ config, initial }: Props) {
         status: task.status,
         level: levelForTask(task),
         message: task.error
-          ? `attempt=${task.attempts} · ${task.error}`
-          : `Core 状态变化 ${previous || "SUBMITTED"} → ${task.status} · attempt=${task.attempts}`,
+          ? `${task.error.code || "ERROR"} · ${task.error.message}`
+          : `Core 状态变化 ${previous || "SUBMITTED"} → ${task.status}`,
       });
     }
 
@@ -108,7 +107,6 @@ export function Workbench({ config, initial }: Props) {
             ...image.state,
             status: task.status,
             taskId: task.id,
-            attempts: task.attempts,
             error: task.error,
             updatedAt: task.updatedAt,
           },
@@ -236,14 +234,24 @@ export function Workbench({ config, initial }: Props) {
           <div><span>BLOCKS</span><strong>{snapshot.blocks.length}</strong></div>
           <div><span>IMAGES</span><strong>{images.length}</strong></div>
           <div><span>WINDOW</span><strong>{windowActive}/{config.req_max_limit}</strong></div>
-          <div><span>SERVER QUEUE</span><strong>{systemStatus?.queue.waiting ?? "—"}</strong></div>
+          <div>
+            <span>SERVER QUEUE</span>
+            <strong>
+              {systemStatus
+                ? `${systemStatus.queue.waiting}/${systemStatus.queue.maxPending}`
+                : "—"}
+            </strong>
+          </div>
           <div><span>DONE</span><strong>{progress}%</strong></div>
         </div>
         <div className="progress-track"><span style={{ width: `${progress}%` }} /></div>
         {keysMissing && (
           <div className="system-alert">
             <strong>CORE BLOCKED · NO_KEYS_REGISTERED</strong>
-            <span>前后端连接正常，但 KeyPool 为空。队列中的 {systemStatus.queue.waiting} 个任务无法派发；请先调用 <code>POST /api/keys</code> 注册 Key。</span>
+            <span>
+              前后端连接正常，但 KeyPool 为空。队列中的 {systemStatus.queue.waiting} 个任务无法派发；
+              请先调用 <code>POST /api/keys</code> 注册 Key。
+            </span>
           </div>
         )}
         <div className="toolbar">
@@ -264,10 +272,18 @@ export function Workbench({ config, initial }: Props) {
           >
             开始全部 ({queue.length})
           </button>
-          <button className="button" disabled={!running} onClick={() => { stopRequested.current = true; }}>
+          <button
+            className="button"
+            disabled={!running}
+            onClick={() => { stopRequested.current = true; }}
+          >
             停止派发
           </button>
-          <button className="button button--danger" disabled={running || importing || !images.length} onClick={() => void clearCache()}>
+          <button
+            className="button button--danger"
+            disabled={running || importing || !images.length}
+            onClick={() => void clearCache()}
+          >
             清空缓存
           </button>
         </div>
@@ -287,8 +303,11 @@ export function Workbench({ config, initial }: Props) {
                 block={block}
                 disabled={running || keysMissing}
                 onBlockPromptChange={(prompt) => void updatePrompt(block.blockId, { prompt })}
-                onImagePromptChange={(imageId, promptOverride) => void updatePrompt(block.blockId, { imageId, promptOverride })}
+                onImagePromptChange={(imageId, promptOverride) => (
+                  void updatePrompt(block.blockId, { imageId, promptOverride })
+                )}
                 onRetry={(imageId) => {
+                  // 这是用户显式发起的新任务，不是 Core 自动重试。
                   const image = block.images.find((item) => item.imageId === imageId);
                   if (image) void runItems([{ block, image }]);
                 }}

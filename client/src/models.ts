@@ -2,7 +2,6 @@ export type TaskStatus =
   | "ready"
   | "pending"
   | "running"
-  | "retry_wait"
   | "completed"
   | "failed"
   | "cancelled";
@@ -17,7 +16,6 @@ export interface RuntimeConfig {
 export interface ImageTaskState {
   taskId: string | null;
   status: TaskStatus;
-  attempts: number;
   error: { code?: string; message: string } | null;
   output: { extension: string; contentType: string; bytes: number } | null;
   updatedAt: string;
@@ -47,7 +45,6 @@ export interface WorkbenchSnapshot {
 export interface CoreTask {
   id: string;
   status: TaskStatus;
-  attempts: number;
   error: { code?: string; message: string } | null;
   updatedAt: string;
 }

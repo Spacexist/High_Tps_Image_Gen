@@ -70,7 +70,7 @@ textarea:focus { border-color: #69744e; box-shadow: 0 0 0 3px rgba(200,255,85,.0
 .image-id { color: #c4cad0; }
 .status { padding: 5px 8px; border-radius: 999px; font: 500 .65rem "DM Mono", monospace; color: #aab0b6; background: #1d2227; }
 .status--completed { color: var(--lime); background: rgba(200,255,85,.08); }
-.status--running, .status--pending, .status--retry_wait { color: #ffce76; background: rgba(255,180,66,.09); }
+.status--running, .status--pending { color: #ffce76; background: rgba(255,180,66,.09); }
 .status--failed { color: #ff7f71; background: rgba(255,75,70,.09); }
 .image-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 13px; }
 figure { position: relative; margin: 0; aspect-ratio: 1; overflow: hidden; border-radius: 8px; background: #171b1f; }
@@ -78,7 +78,6 @@ figure img { width: 100%; height: 100%; display: block; object-fit: cover; }
 figcaption { position: absolute; left: 7px; bottom: 7px; padding: 3px 5px; border-radius: 4px; background: rgba(5,7,8,.75); font: .55rem "DM Mono", monospace; letter-spacing: .1em; color: #d0d5d9; }
 .empty-output { height: 100%; display: grid; place-items: center; color: #4e555d; font-size: .75rem; background: repeating-linear-gradient(135deg, #121519, #121519 8px, #15191d 8px, #15191d 16px); }
 .image-actions { justify-content: flex-end; margin-top: 10px; min-height: 32px; }
-.attempts { margin-right: auto; color: #606870; font: .67rem "DM Mono", monospace; }
 .error-text { color: #ff8377; font-size: .72rem; line-height: 1.45; margin: 9px 0 0; }
 
 /* 每个 Block 的日志紧贴卡片底部，正好占据原来的 Block 间隔位置。 */

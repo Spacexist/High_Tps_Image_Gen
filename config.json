@@ -5,7 +5,7 @@
     "logger": true
   },
   "queue": {
-    "dispatchRatePerSecond": 300,
+    "dispatchRatePerSecond": 1,
     "maxPending": 10000,
     "terminalTtlMs": 1800000
   },
@@ -13,11 +13,6 @@
     "timeoutMs": 120000,
     "imagePath": "/v1/images/generations",
     "imageEditPath": "/v1/images/edits"
-  },
-  "retry": {
-    "maxAttempts": 3,
-    "baseDelayMs": 1000,
-    "maxDelayMs": 30000
   },
   "result": {
     "resultTtlMs": 1800000,

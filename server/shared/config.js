@@ -15,7 +15,6 @@ const defaults = {
     imagePath: "/v1/images/generations",
     imageEditPath: "/v1/images/edits",
   },
-  retry: { maxAttempts: 3, baseDelayMs: 1_000, maxDelayMs: 30_000 },
   result: { resultTtlMs: 30 * 60_000, deleteAfterRead: true },
   health: {
     enabled: true,
@@ -37,10 +36,10 @@ function merge(base, override) {
   const output = { ...base };
   for (const [key, value] of Object.entries(override ?? {})) {
     output[key] =
-      value &&
-      typeof value === "object" &&
-      !Array.isArray(value) &&
-      typeof base?.[key] === "object"
+      value
+      && typeof value === "object"
+      && !Array.isArray(value)
+      && typeof base?.[key] === "object"
         ? merge(base[key], value)
         : value;
   }
@@ -67,9 +66,6 @@ export function normalizeConfig(input, baseDir = projectRoot) {
     "queue.maxPending",
     "queue.terminalTtlMs",
     "request.timeoutMs",
-    "retry.maxAttempts",
-    "retry.baseDelayMs",
-    "retry.maxDelayMs",
     "result.resultTtlMs",
     "health.intervalMs",
     "health.timeoutMs",

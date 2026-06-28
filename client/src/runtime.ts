@@ -7,12 +7,10 @@ export interface SystemStatus {
   queue: {
     total: number;
     waiting: number;
-    pending: number;
-    retry_wait: number;
-    running: number;
-    completed: number;
-    failed: number;
-    cancelled: number;
+    maxPending: number;
+    remainingCapacity: number;
+    overCapacity: number;
+    byStatus: Record<Exclude<TaskStatus, "ready">, number>;
   };
   keys: {
     sources: number;

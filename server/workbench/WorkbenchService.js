@@ -57,21 +57,26 @@ export class WorkbenchService {
         imageId: image.imageId,
         taskId: null,
         status: "ready",
-        attempts: 0,
         error: null,
         output: null,
         updatedAt: now,
       },
     ]));
     await this.store.replace(blocks, tasks);
-    this.logger.info?.({ event: "workbench.imported", blocks: blocks.length, images: jobs.length }, "Workbench imported");
+    this.logger.info?.({
+      event: "workbench.imported",
+      blocks: blocks.length,
+      images: jobs.length,
+    }, "Workbench imported");
     return this.snapshot();
   }
 
   async updateBlock(blockId, patch) {
     const block = this.#requireBlock(blockId);
     if (typeof patch.prompt === "string") block.prompt = patch.prompt;
-    if (typeof patch.listing === "string" && patch.listing.trim()) block.listing = patch.listing.trim();
+    if (typeof patch.listing === "string" && patch.listing.trim()) {
+      block.listing = patch.listing.trim();
+    }
     if (patch.imageId) {
       const image = block.images.find((item) => item.imageId === patch.imageId);
       if (!image) throw new NotFoundError(`Image "${blockId}/${patch.imageId}" not found`);
@@ -89,7 +94,9 @@ export class WorkbenchService {
     const finalPrompt = typeof prompt === "string" && prompt.trim()
       ? prompt.trim()
       : (image.promptOverride || block.prompt).trim();
-    if (!finalPrompt) throw new ValidationError(`图片 "${blockId}/${imageId}" 没有可提交的 prompt`);
+    if (!finalPrompt) {
+      throw new ValidationError(`图片 "${blockId}/${imageId}" 没有可提交的 prompt`);
+    }
 
     const created = this.queue.create({
       model: model.trim(),
@@ -105,7 +112,6 @@ export class WorkbenchService {
       imageId,
       taskId: created.id,
       status: created.status,
-      attempts: created.attempts,
       error: null,
       output: null,
       updatedAt: created.updatedAt,
@@ -138,15 +144,11 @@ export class WorkbenchService {
   }
 
   async started(task) {
-    await this.#setTaskState(task, { status: "running", attempts: task.attempts });
-  }
-
-  async retrying(task, error) {
-    await this.#setTaskState(task, { status: "retry_wait", attempts: task.attempts, error });
+    await this.#setTaskState(task, { status: "running" });
   }
 
   async failed(task, error) {
-    await this.#setTaskState(task, { status: "failed", attempts: task.attempts, error });
+    await this.#setTaskState(task, { status: "failed", error });
   }
 
   async completed(task, result) {
@@ -154,12 +156,15 @@ export class WorkbenchService {
     if (!ref) return;
     try {
       const output = await this.imageCache.cacheOutput(ref.blockId, ref.imageId, result);
-      await this.#setTaskState(task, { status: "completed", attempts: task.attempts, error: null, output });
+      await this.#setTaskState(task, {
+        status: "completed",
+        error: null,
+        output,
+      });
     } catch (error) {
       this.logger.error?.({ err: error, taskId: task.id, ...ref }, "Workbench output cache failed");
       await this.#setTaskState(task, {
         status: "failed",
-        attempts: task.attempts,
         error: { code: "CACHE_ERROR", message: error.message },
       });
     }

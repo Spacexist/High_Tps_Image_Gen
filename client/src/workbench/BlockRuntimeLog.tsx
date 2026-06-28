@@ -8,7 +8,7 @@ interface Props {
   model: string;
 }
 
-const pendingStatuses = new Set(["pending", "retry_wait", "running"]);
+const pendingStatuses = new Set(["pending", "running"]);
 
 function getDiagnosis(block: WorkbenchBlock, status: SystemStatus | undefined, model: string) {
   const pending = block.images.filter((image) => pendingStatuses.has(image.state.status)).length;
@@ -48,15 +48,13 @@ function describeImage(block: WorkbenchBlock, imageId: string, status: SystemSta
         ? "已进入 Core 队列；KeyPool=0，暂时无法派发。"
         : "已进入 Core 队列，等待匹配 Key。";
     case "running":
-      return "Core 已租用 Key，正在执行上游图片请求。";
-    case "retry_wait":
-      return `等待重试${state.error ? `：${state.error.message}` : "。"} `;
+      return "Core 已租用 Key，正在执行一次上游图片请求。";
     case "completed":
       return `结果已落盘${state.output?.bytes ? `，${state.output.bytes} bytes` : ""}。`;
     case "failed":
-      return `任务失败：${state.error?.message || "未返回错误详情"}`;
+      return `单次请求失败，任务已终止：${state.error?.message || "未返回错误详情"}`;
     case "cancelled":
-      return "任务已取消，可重新提交。";
+      return "任务已取消，可由用户重新提交。";
   }
 }
 
@@ -97,9 +95,13 @@ export function BlockRuntimeLog({ block, entries, systemStatus, model }: Props) 
         ))}
         {block.images.map((image) => (
           <div className="runtime-row" key={`state-${image.imageId}`}>
-            <code>{image.state.updatedAt ? new Date(image.state.updatedAt).toLocaleTimeString("zh-CN", { hour12: false }) : "—"}</code>
+            <code>
+              {image.state.updatedAt
+                ? new Date(image.state.updatedAt).toLocaleTimeString("zh-CN", { hour12: false })
+                : "—"}
+            </code>
             <code>{image.imageId}</code>
-            <code>{image.state.status.toUpperCase()} · TRY {image.state.attempts}</code>
+            <code>{image.state.status.toUpperCase()}</code>
             <code title={image.state.taskId ?? undefined}>{image.state.taskId || "—"}</code>
             <code>{describeImage(block, image.imageId, systemStatus)}</code>
           </div>

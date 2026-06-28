@@ -37,16 +37,12 @@ export class DownstreamError extends AppError {
   constructor(message, {
     statusCode = 502,
     downstreamStatus,
-    retryable = false,
     responseBody,
-    retryAfterMs,
     cause,
   } = {}) {
     super(message, { code: "DOWNSTREAM_ERROR", statusCode });
     this.downstreamStatus = downstreamStatus;
-    this.retryable = retryable;
     this.responseBody = responseBody;
-    this.retryAfterMs = retryAfterMs;
     if (cause) this.cause = cause;
   }
 }

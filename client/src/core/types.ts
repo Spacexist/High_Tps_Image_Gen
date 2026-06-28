@@ -3,11 +3,7 @@ import type { TaskStatus } from "../models";
 export interface CoreStatus {
   status: "ok";
   uptimeSeconds: number;
-  queue: {
-    total: number;
-    waiting: number;
-    byStatus: Record<Exclude<TaskStatus, "ready">, number>;
-  };
+  queue: QueueStats;
   keys: KeyStats;
   dispatcher: {
     inFlight: number;
@@ -19,6 +15,15 @@ export interface CoreStatus {
     severity: "ok" | "warning" | "error";
     message: string;
   };
+}
+
+export interface QueueStats {
+  total: number;
+  waiting: number;
+  maxPending: number;
+  remainingCapacity: number;
+  overCapacity: number;
+  byStatus: Record<Exclude<TaskStatus, "ready">, number>;
 }
 
 export interface KeyStats {
@@ -87,12 +92,10 @@ export interface CoreTaskItem {
     imageId?: string;
     size?: string;
   };
-  attempts: number;
   createdAt: string;
   updatedAt: string;
   startedAt: string | null;
   completedAt: string | null;
-  nextAttemptAt: string | null;
   keyID: string | null;
   error: { code?: string; message: string } | null;
 }

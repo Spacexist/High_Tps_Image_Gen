@@ -7,7 +7,6 @@ import { KeyManager } from "./keys/KeyManager.js";
 import { HealthTester } from "./keys/HealthTester.js";
 import { TaskQueue } from "./core/TaskQueue.js";
 import { ResultStore } from "./core/ResultStore.js";
-import { RetryPolicy } from "./core/RetryPolicy.js";
 import { RequestExecutor } from "./core/RequestExecutor.js";
 import { TaskRunner } from "./core/TaskRunner.js";
 import { Dispatcher } from "./core/Dispatcher.js";
@@ -16,6 +15,7 @@ import { ImageCache } from "./workbench/ImageCache.js";
 import { WorkbenchService } from "./workbench/WorkbenchService.js";
 import { taskRoutes } from "./api/routes/tasks.js";
 import { keyRoutes } from "./api/routes/keys.js";
+import { queueRoutes } from "./api/routes/queue.js";
 import { statusRoutes } from "./api/routes/status.js";
 import { workbenchRoutes } from "./api/routes/workbench.js";
 
@@ -39,7 +39,7 @@ export async function buildApp({
     if (request.method === "OPTIONS") return reply.code(204).send();
   });
 
-  // 装配顺序明确分层：原始 Key -> 物理 KeyPool -> Core -> 工作台持久层 -> HTTP API。
+  // 装配顺序明确分层：原始 Key -> 物理 KeyPool -> Core Queue -> 工作台持久层 -> HTTP API。
   const keyStore = new KeyStore(config.keys.storePath);
   const keyManager = await new KeyManager({ store: keyStore, logger: app.log }).init();
   const healthTester = new HealthTester({
@@ -50,7 +50,6 @@ export async function buildApp({
   });
   const queue = new TaskQueue(config.queue);
   const resultStore = new ResultStore(config.result);
-  const retryPolicy = new RetryPolicy(config.retry);
   const workbenchStore = await new WorkbenchStore(config.workbench.cachePath).init();
   const imageCache = await new ImageCache(config.workbench).init();
   const workbenchService = new WorkbenchService({
@@ -65,7 +64,6 @@ export async function buildApp({
     queue,
     keyManager,
     executor: requestExecutor,
-    retryPolicy,
     resultStore,
     taskObserver: workbenchService,
     logger: app.log,
@@ -83,7 +81,6 @@ export async function buildApp({
     healthTester,
     queue,
     resultStore,
-    retryPolicy,
     requestExecutor,
     runner,
     dispatcher,
@@ -93,13 +90,16 @@ export async function buildApp({
   };
 
   await app.register(taskRoutes, services);
+  await app.register(queueRoutes, services);
   await app.register(keyRoutes, services);
   await app.register(statusRoutes, services);
   await app.register(workbenchRoutes, services);
 
   app.setErrorHandler((error, request, reply) => {
     const known = error instanceof AppError;
-    const statusCode = known ? error.statusCode : (error.statusCode && error.statusCode < 500 ? error.statusCode : 500);
+    const statusCode = known
+      ? error.statusCode
+      : (error.statusCode && error.statusCode < 500 ? error.statusCode : 500);
     if (statusCode >= 500) request.log.error({ err: error }, "Request failed");
     reply.code(statusCode).send({
       error: {

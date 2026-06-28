@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { TaskQueue } from "../../server/core/TaskQueue.js";
-import { RetryPolicy } from "../../server/core/RetryPolicy.js";
 import { ResultStore } from "../../server/core/ResultStore.js";
 
 function makeQueue(options = {}) {
@@ -13,18 +12,35 @@ test("队首模型无 Key 时会跳过它并调度后面的可运行任务", (t)
   t.after(() => queue.stop());
   const blocked = queue.create({ model: "blocked", prompt: "a" });
   const runnable = queue.create({ model: "ready", prompt: "b" });
-  const claimed = queue.claimFirst((task) => task.input.model === "ready" ? { keyID: "copy-1" } : null);
+  const claimed = queue.claimFirst((task) => (
+    task.input.model === "ready" ? { keyID: "copy-1" } : null
+  ));
   assert.equal(claimed.task.id, runnable.id);
   assert.equal(queue.get(blocked.id).status, "pending");
 });
 
-test("RetryPolicy 只重试可重试错误并执行指数退避", () => {
-  const policy = new RetryPolicy({ maxAttempts: 3, baseDelayMs: 100, maxDelayMs: 500 });
-  assert.equal(policy.shouldRetry({ attempts: 1 }, { retryable: true }), true);
-  assert.equal(policy.shouldRetry({ attempts: 3 }, { retryable: true }), false);
-  assert.equal(policy.shouldRetry({ attempts: 1 }, { retryable: false }), false);
-  assert.equal(policy.delayFor({ attempts: 3 }, {}), 400);
-  assert.equal(policy.delayFor({ attempts: 1 }, { retryAfterMs: 900 }), 500);
+test("Queue 可以运行时扩缩容，缩容不会删除已经排队的任务", (t) => {
+  const queue = makeQueue({ maxPending: 3 });
+  t.after(() => queue.stop());
+  const first = queue.create({ model: "image", prompt: "a" });
+  const second = queue.create({ model: "image", prompt: "b" });
+
+  const shrunk = queue.setMaxPending(1);
+  assert.equal(shrunk.maxPending, 1);
+  assert.equal(shrunk.waiting, 2);
+  assert.equal(shrunk.overCapacity, 1);
+  assert.equal(queue.get(first.id).status, "pending");
+  assert.equal(queue.get(second.id).status, "pending");
+  assert.throws(
+    () => queue.create({ model: "image", prompt: "blocked" }),
+    (error) => error.code === "QUEUE_FULL",
+  );
+
+  const expanded = queue.setMaxPending(4);
+  assert.equal(expanded.remainingCapacity, 2);
+  assert.equal(queue.create({ model: "image", prompt: "accepted" }).status, "pending");
+  assert.throws(() => queue.setMaxPending(0), /1–1000000/);
+  assert.throws(() => queue.setMaxPending(1.5), /1–1000000/);
 });
 
 test("ResultStore 默认首次读取后删除结果", (t) => {
