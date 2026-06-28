@@ -1,0 +1,18 @@
+[
+  {
+    "blockId": "product-001",
+    "listing": "Minimal Ceramic Vase",
+    "prompt": "Create a clean ecommerce product photo on a warm neutral studio background.",
+    "images": [
+      {
+        "imageId": "front",
+        "url": "https://example.com/product-front.png"
+      },
+      {
+        "imageId": "detail",
+        "url": "https://example.com/product-detail.png",
+        "prompt": "Emphasize the ceramic texture and handmade details."
+      }
+    ]
+  }
+]

@@ -1,0 +1,42 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 3000,
+    "logger": true
+  },
+  "queue": {
+    "dispatchRatePerSecond": 300,
+    "maxPending": 10000,
+    "terminalTtlMs": 1800000
+  },
+  "request": {
+    "timeoutMs": 120000,
+    "imagePath": "/v1/images/generations",
+    "imageEditPath": "/v1/images/edits"
+  },
+  "retry": {
+    "maxAttempts": 3,
+    "baseDelayMs": 1000,
+    "maxDelayMs": 30000
+  },
+  "result": {
+    "resultTtlMs": 1800000,
+    "deleteAfterRead": true
+  },
+  "health": {
+    "enabled": true,
+    "runOnStart": false,
+    "intervalMs": 30000,
+    "timeoutMs": 10000,
+    "path": "/v1/models"
+  },
+  "keys": {
+    "storePath": "data/apikey_pool.json"
+  },
+  "workbench": {
+    "cachePath": "data/workbench-cache",
+    "maxImageBytes": 26214400,
+    "downloadTimeoutMs": 60000,
+    "importConcurrency": 5
+  }
+}

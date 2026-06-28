@@ -1,0 +1,25 @@
+{
+  "name": "high-tps-image-gen",
+  "version": "1.1.0",
+  "description": "High-concurrency image workbench with a dynamic key pool",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "dev:client": "npm --prefix client run dev",
+    "build:client": "npm --prefix client run build",
+    "test": "node --test --test-isolation=none",
+    "test:unit": "node --test --test-isolation=none \"test/unit/*.test.js\"",
+    "test:integration": "node --test --test-isolation=none \"test/integration/*.test.js\"",
+    "benchmark": "node benchmark/benchmark.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "fastify": "^4.29.1",
+    "pino": "^9.14.0",
+    "undici": "^6.21.0"
+  }
+}

@@ -1,0 +1,16 @@
+node_modules/
+client/node_modules/
+client/dist/
+client/tsconfig.tsbuildinfo
+.env
+.env.*
+*.log
+coverage/
+.nyc_output/
+dist/
+tmp/
+results/
+
+# 真实密钥和工作台图片/任务缓存只保留在本机。
+data/apikey_pool.json
+data/workbench-cache/
