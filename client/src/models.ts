@@ -43,9 +43,11 @@ export interface WorkbenchSnapshot {
   blocks: WorkbenchBlock[];
 }
 
+// Core API 的任务快照包含更新时间，前端用它记录精确的状态变更时间。
 export interface CoreTask {
   id: string;
   status: TaskStatus;
   attempts: number;
   error: { code?: string; message: string } | null;
+  updatedAt: string;
 }
