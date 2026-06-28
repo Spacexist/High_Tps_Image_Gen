@@ -1,4 +1,4 @@
-// 原始 Key 管理与人工健康检查接口。
+// 原始 Key 管理、物理 KeyPool 快照与人工健康检查接口。
 const keyBodySchema = {
   type: "object",
   required: ["baseUrl", "apiKey", "models", "concurrency"],
@@ -16,6 +16,18 @@ const keyBodySchema = {
 
 export async function keyRoutes(app, { keyManager, healthTester }) {
   app.get("/api/keys", async () => ({ items: keyManager.list(), stats: keyManager.getStats() }));
+
+  // 快照只包含 keyID、模型、generation 与租约状态，不返回明文 apiKey。
+  app.get("/api/keys/pool", {
+    schema: {
+      querystring: {
+        type: "object",
+        properties: {
+          limit: { type: "integer", minimum: 1, maximum: 2000, default: 500 },
+        },
+      },
+    },
+  }, async (request) => keyManager.getPoolSnapshot({ limit: request.query.limit }));
 
   app.post("/api/keys", { schema: { body: keyBodySchema } }, async (request, reply) => {
     const key = await keyManager.create(request.body);

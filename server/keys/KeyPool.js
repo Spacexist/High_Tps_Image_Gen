@@ -87,6 +87,29 @@ export class KeyPool extends EventEmitter {
     }
   }
 
+  // 管理 UI 只需要副本身份和租约状态，绝不暴露 apiKey 或其他认证字段。
+  getSnapshot({ limit = 500 } = {}) {
+    const toPublicCopy = (key, status) => ({
+      keyID: key.keyID,
+      sourceKeyId: key.sourceKeyId,
+      name: key.name,
+      generation: key.generation,
+      models: structuredClone(key.models),
+      status,
+    });
+    const copies = [
+      ...[...this.available.values()].map((key) => toPublicCopy(key, "available")),
+      ...[...this.leased.values()].map((key) => toPublicCopy(key, "leased")),
+    ].sort((left, right) => left.keyID.localeCompare(right.keyID));
+
+    return {
+      items: copies.slice(0, limit),
+      total: copies.length,
+      truncated: copies.length > limit,
+      limit,
+    };
+  }
+
   getStats() {
     const bySource = {};
     for (const [sourceKeyId, state] of this.sources) {

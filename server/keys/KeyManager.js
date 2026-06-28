@@ -164,6 +164,7 @@ export class KeyManager extends EventEmitter {
       ...structuredClone(source),
       apiKey: maskSecret(source.apiKey),
       healthy: runtime?.healthy ?? false,
+      generation: runtime?.generation ?? 0,
       lastCheckedAt: runtime?.lastCheckedAt ?? null,
       lastError: runtime?.lastError ?? null,
       pool: {
@@ -172,6 +173,11 @@ export class KeyManager extends EventEmitter {
         total: (stats.available ?? 0) + (stats.leased ?? 0),
       },
     };
+  }
+
+  // 独立方法保证管理 UI 永远拿不到原始 Key 对象中的秘密字段。
+  getPoolSnapshot(options) {
+    return this.pool.getSnapshot(options);
   }
 
   getStats() {

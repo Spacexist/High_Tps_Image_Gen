@@ -3,9 +3,17 @@ import type { RuntimeConfig, WorkbenchSnapshot } from "./models";
 import { loadConfig } from "./load/loadConfig";
 import { apiJson, configureApi } from "./request/api";
 import { Workbench } from "./workbench/Workbench";
+import { AppNav, type AppPage } from "./AppNav";
+import { CoreDashboard } from "./core/CoreDashboard";
+import "./core/core.css";
+
+function pageFromHash(): AppPage {
+  return window.location.hash === "#core" ? "core" : "workbench";
+}
 
 export default function App() {
   const [ready, setReady] = useState<{ config: RuntimeConfig; snapshot: WorkbenchSnapshot } | null>(null);
+  const [page, setPage] = useState<AppPage>(pageFromHash);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -22,6 +30,17 @@ export default function App() {
     })();
   }, []);
 
+  useEffect(() => {
+    const update = () => setPage(pageFromHash());
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+
+  function navigate(nextPage: AppPage) {
+    window.location.hash = nextPage === "core" ? "core" : "";
+    setPage(nextPage);
+  }
+
   if (error) {
     return (
       <div className="boot-screen boot-screen--error">
@@ -31,6 +50,14 @@ export default function App() {
       </div>
     );
   }
-  if (!ready) return <div className="boot-screen"><span className="loader" />正在恢复本地工作台…</div>;
-  return <Workbench config={ready.config} initial={ready.snapshot} />;
+  if (!ready) return <div className="boot-screen"><span className="loader" />正在连接 Workbench 与 Core…</div>;
+
+  return (
+    <>
+      <AppNav page={page} onChange={navigate} />
+      {page === "core"
+        ? <CoreDashboard config={ready.config} />
+        : <Workbench config={ready.config} initial={ready.snapshot} />}
+    </>
+  );
 }
