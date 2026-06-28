@@ -1,0 +1,14 @@
+{
+  "name": "high-tps-fixed-image-mock",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A dependency-free mock upstream that always returns the same TEST image.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test --test-isolation=none test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

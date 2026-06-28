@@ -8,6 +8,8 @@
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
     "dev:client": "npm --prefix client run dev",
+    "mock:start": "node mock-image-server/server.js",
+    "mock:test": "node --test --test-isolation=none mock-image-server/test/*.test.js",
     "build:client": "npm --prefix client run build",
     "test": "node --test --test-isolation=none",
     "test:unit": "node --test --test-isolation=none \"test/unit/*.test.js\"",
