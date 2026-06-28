@@ -26,11 +26,12 @@ export class TaskRunner {
 
     try {
       const result = await this.executor.execute(task, key);
+      // 先等待输出真正落盘，再把 Core 标成 completed。
+      // 这样前端看到终态时，滑动窗口释放槽位且 outputUrl 已经稳定可读。
+      await this.taskObserver?.completed?.(task, result);
       this.resultStore.set(task.id, result);
       this.queue.complete(task.id);
       this.keyManager.reportOutcome(key, { success: true });
-      // Core 成功后再缓存输出；缓存异常只影响工作台结果，不应误伤健康 Key。
-      await this.taskObserver?.completed?.(task, result);
       this.logger.info?.({
         event: "task.completed",
         taskId: task.id,
