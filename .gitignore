@@ -8,5 +8,5 @@ dist/
 tmp/
 results/
 
-# API Key 配置包含敏感信息
+# Contains real API secrets. Commit apikey_pool.example.json instead.
 data/apikey_pool.json

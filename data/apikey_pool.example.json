@@ -1,0 +1,11 @@
+[
+  {
+    "id": "example-key",
+    "name": "Example provider",
+    "baseUrl": "https://api.example.com",
+    "apiKey": "replace-me",
+    "models": ["gpt-image-1"],
+    "concurrency": 2,
+    "enabled": false
+  }
+]
