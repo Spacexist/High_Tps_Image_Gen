@@ -1,0 +1,19 @@
+{
+  "name": "image-relay-station",
+  "version": "1.0.0",
+  "description": "高并发图像生成中转站 - High-concurrency image generation relay station",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "benchmark": "node test/benchmark.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "undici": "^6.19.0"
+  },
+  "devDependencies": {}
+}
