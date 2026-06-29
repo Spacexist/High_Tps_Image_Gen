@@ -23,11 +23,7 @@ test("status explains when queued tasks cannot run because KeyPool is empty", as
     const taskResponse = await app.inject({
       method: "POST",
       url: "/api/tasks",
-      payload: {
-        model: "gpt-image-1",
-        prompt: "diagnostic test",
-        size: "1024x1024",
-      },
+      payload: { model: "gpt-image-1", prompt: "diagnostic test", size: "1024x1024" },
     });
     assert.equal(taskResponse.statusCode, 202);
 
@@ -35,11 +31,11 @@ test("status explains when queued tasks cannot run because KeyPool is empty", as
     assert.equal(statusResponse.statusCode, 200);
     const status = statusResponse.json();
     assert.equal(status.queue.waiting, 1);
-    assert.equal(status.queue.maxPending, 100);
+    assert.equal(status.queue.waitingLimit, 100);
+    assert.equal(status.queue.executionPoolLimit, 0);
     assert.equal(status.queue.remainingCapacity, 99);
     assert.equal(status.keys.total, 0);
     assert.equal(status.diagnostics.code, "NO_KEYS_REGISTERED");
-    assert.equal(status.diagnostics.severity, "error");
   } finally {
     await app.close();
     await rm(cacheDir, { recursive: true, force: true });

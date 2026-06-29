@@ -5,7 +5,6 @@
     "logger": true
   },
   "queue": {
-    "dispatchRatePerSecond": 1,
     "maxPending": 10000,
     "terminalTtlMs": 1800000
   },

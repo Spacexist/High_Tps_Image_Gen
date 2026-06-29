@@ -86,11 +86,14 @@ export class WorkbenchService {
     return this.snapshot();
   }
 
-  async submit({ blockId, imageId, model, prompt, size = "1024x1024" }) {
+  async submit({ blockId, imageId, imageUrl, model, prompt, size = "1024x1024" }) {
     if (!model?.trim()) throw new ValidationError("model 不能为空");
     const block = this.#requireBlock(blockId);
     const image = block.images.find((item) => item.imageId === imageId);
     if (!image) throw new NotFoundError(`Image "${blockId}/${imageId}" not found`);
+    if (typeof imageUrl !== "string" || imageUrl !== image.url) {
+      throw new ValidationError(`图片 "${blockId}/${imageId}" 的 imageUrl 与已缓存原图不一致`);
+    }
     const finalPrompt = typeof prompt === "string" && prompt.trim()
       ? prompt.trim()
       : (image.promptOverride || block.prompt).trim();
@@ -99,10 +102,14 @@ export class WorkbenchService {
     }
 
     const created = this.queue.create({
+      blockId,
+      imageId,
+      imageUrl,
       model: model.trim(),
       prompt: finalPrompt,
       size,
       n: 1,
+      // URL 留在公开任务结构中用于审计；Core 从缓存文件读取真实二进制。
       _inputFile: this.imageCache.inputPath(blockId, imageId, image.input.extension),
       _inputContentType: image.input.contentType,
       _workbench: { blockId, imageId },
@@ -156,11 +163,7 @@ export class WorkbenchService {
     if (!ref) return;
     try {
       const output = await this.imageCache.cacheOutput(ref.blockId, ref.imageId, result);
-      await this.#setTaskState(task, {
-        status: "completed",
-        error: null,
-        output,
-      });
+      await this.#setTaskState(task, { status: "completed", error: null, output });
     } catch (error) {
       this.logger.error?.({ err: error, taskId: task.id, ...ref }, "Workbench output cache failed");
       await this.#setTaskState(task, {

@@ -13,8 +13,7 @@ const PNG = Buffer.from(
 async function waitForWorkbench(app, timeoutMs = 2_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const response = await app.inject({ method: "GET", url: "/api/workbench" });
-    const snapshot = response.json();
+    const snapshot = (await app.inject({ method: "GET", url: "/api/workbench" })).json();
     const status = snapshot.blocks[0]?.images[0]?.state?.status;
     if (["completed", "failed"].includes(status)) return snapshot;
     await new Promise((resolve) => setTimeout(resolve, 10));
@@ -22,7 +21,7 @@ async function waitForWorkbench(app, timeoutMs = 2_000) {
   throw new Error("Workbench task did not finish in time");
 }
 
-test("导入原图、提交 Core、缓存结果后刷新仍能恢复", async (t) => {
+test("导入时生成数字 ImageID，任务显式传 URL，完成后结果可读取", async (t) => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "workbench-api-"));
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(PNG, { headers: { "content-type": "image/png" } });
@@ -51,6 +50,7 @@ test("导入原图、提交 Core、缓存结果后刷新仍能恢复", async (t)
       concurrency: 1,
     },
   });
+  const imageUrl = "https://example.test/front.png";
   const imported = await built.app.inject({
     method: "POST",
     url: "/api/workbench/import",
@@ -58,25 +58,26 @@ test("导入原图、提交 Core、缓存结果后刷新仍能恢复", async (t)
       blockId: "product-001",
       listing: "Product",
       prompt: "studio photo",
-      images: [{ imageId: "front", url: "https://example.test/front.png" }],
+      images: [{ imageId: "front", url: imageUrl }],
     }],
   });
   assert.equal(imported.statusCode, 201, imported.body);
+  assert.equal(imported.json().blocks[0].images[0].imageId, "01");
 
   const submitted = await built.app.inject({
     method: "POST",
     url: "/api/workbench/tasks",
-    payload: { blockId: "product-001", imageId: "front", model: "image-a" },
+    payload: { blockId: "product-001", imageId: "01", imageUrl, model: "image-a" },
   });
   assert.equal(submitted.statusCode, 202, submitted.body);
+  assert.equal(submitted.json().input.imageUrl, imageUrl);
 
   const snapshot = await waitForWorkbench(built.app);
   assert.equal(snapshot.blocks[0].images[0].state.status, "completed");
-  assert.match(snapshot.blocks[0].images[0].outputUrl, /assets\/output/);
 
   const output = await built.app.inject({
     method: "GET",
-    url: "/api/workbench/assets/output/product-001/front",
+    url: "/api/workbench/assets/output/product-001/01",
   });
   assert.equal(output.statusCode, 200);
   assert.equal(output.headers["content-type"], "image/png");

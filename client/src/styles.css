@@ -34,6 +34,35 @@ main { width: min(1540px, calc(100% - 48px)); margin: 0 auto; padding: 50px 0 90
 .metrics div:last-child { border: 0; }
 .metrics span { color: var(--muted); }
 .metrics strong { font-size: 1.5rem; font-weight: 500; }
+.window-control { display: flex; align-items: center; justify-content: flex-end; gap: 5px; }
+.window-control strong { margin-right: -2px; }
+.window-control button {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  padding: 0;
+  color: #aeb5bb;
+  background: #171b1f;
+  border: 1px solid #30363c;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.window-control button:hover:not(:disabled) { color: #101207; background: var(--lime); border-color: var(--lime); }
+.window-control button:disabled { opacity: .35; cursor: not-allowed; }
+.window-control input {
+  width: 58px;
+  height: 29px;
+  padding: 0 5px;
+  color: var(--lime);
+  background: #0c0f12;
+  border: 1px solid #30363c;
+  border-radius: 6px;
+  outline: none;
+  text-align: center;
+  font: 500 .85rem "DM Mono", monospace;
+}
+.window-control input:focus { border-color: #778c4e; box-shadow: 0 0 0 3px rgba(200,255,85,.06); }
 .progress-track { height: 3px; margin: 20px 0; background: #292d31; overflow: hidden; }
 .progress-track span { display: block; height: 100%; background: var(--lime); transition: width .35s ease; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 9px; }
@@ -63,8 +92,21 @@ main { width: min(1540px, calc(100% - 48px)); margin: 0 auto; padding: 50px 0 90
 textarea { width: 100%; resize: vertical; min-height: 68px; color: #e7e9e6; border: 1px solid #292e34; border-radius: 10px; background: #0c0f12; padding: 11px 13px; outline: none; line-height: 1.5; }
 textarea:focus { border-color: #69744e; box-shadow: 0 0 0 3px rgba(200,255,85,.06); }
 
-.image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 13px; }
-.image-card { border: 1px solid #272c31; background: #0c0f12; border-radius: 13px; padding: 13px; min-width: 0; }
+/* 一个 Block 永远只有一行图片；数量超出容器后在 Block 内横向滚动。 */
+.image-grid {
+  display: flex;
+  gap: 13px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 10px;
+  scroll-snap-type: x proximity;
+  scrollbar-color: #46502f #111519;
+  scrollbar-width: thin;
+}
+.image-grid::-webkit-scrollbar { height: 9px; }
+.image-grid::-webkit-scrollbar-track { border-radius: 999px; background: #111519; }
+.image-grid::-webkit-scrollbar-thumb { border: 2px solid #111519; border-radius: 999px; background: #46502f; }
+.image-card { flex: 0 0 clamp(330px, 24vw, 398px); scroll-snap-align: start; border: 1px solid #272c31; background: #0c0f12; border-radius: 13px; padding: 13px; min-width: 0; }
 .image-card__top, .image-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .image-card__top { margin-bottom: 11px; }
 .image-id { color: #c4cad0; }
@@ -134,7 +176,7 @@ figcaption { position: absolute; left: 7px; bottom: 7px; padding: 3px 5px; borde
   .hero { align-items: flex-start; flex-direction: column; gap: 24px; }
   .control-panel { position: static; }
   .block-card { padding: 17px; }
-  .image-grid { grid-template-columns: 1fr; }
+  .image-card { flex-basis: min(86vw, 398px); }
   .button--danger { margin-left: 0; }
   .block-runtime-log__header { align-items: flex-start; flex-direction: column; }
   .runtime-row { grid-template-columns: 62px 100px minmax(240px, 1fr); }

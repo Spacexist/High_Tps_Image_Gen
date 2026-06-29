@@ -29,11 +29,10 @@ export function parseWorkbenchJson(input) {
       throw new ValidationError(`Block "${blockId}" 必须包含 1 到 20 张图片`);
     }
 
-    const imageIds = new Set();
     const images = rawBlock.images.map((rawImage, imageIndex) => {
-      const imageId = requireId(rawImage?.imageId, `blocks[${blockIndex}].images[${imageIndex}].imageId`);
-      if (imageIds.has(imageId)) throw new ValidationError(`Block "${blockId}" 中 imageId "${imageId}" 重复`);
-      imageIds.add(imageId);
+      // ImageID 只表达 Block 内顺序。front/detail 等旧字段会被忽略，
+      // 数据模型、缓存文件名和 Core 请求统一使用 01、02、03……
+      const imageId = String(imageIndex + 1).padStart(2, "0");
       try {
         const url = new URL(rawImage.url);
         if (!["http:", "https:"].includes(url.protocol)) throw new Error();

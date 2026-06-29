@@ -8,7 +8,6 @@ export type TaskStatus =
 
 export interface RuntimeConfig {
   server: { protocol: string; host: string; port: number };
-  req_max_limit: number;
   poll_interval_ms: number;
   ui: { title: string; default_model: string; image_size: string };
 }
@@ -41,10 +40,15 @@ export interface WorkbenchSnapshot {
   blocks: WorkbenchBlock[];
 }
 
-// Core API 的任务快照包含更新时间，前端用它记录精确的状态变更时间。
+// Core 返回的 trace 已在服务端脱敏，前端仅负责结构化展示。
 export interface CoreTask {
   id: string;
   status: TaskStatus;
-  error: { code?: string; message: string } | null;
+  keyID?: string | null;
+  error: { code?: string; message: string; downstreamStatus?: number } | null;
   updatedAt: string;
+  trace?: {
+    request?: unknown;
+    response?: unknown;
+  };
 }

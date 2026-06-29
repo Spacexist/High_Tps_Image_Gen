@@ -53,3 +53,29 @@ test("/test.png 可直接预览同一张 PNG", async (context) => {
   assert.equal(response.headers.get("content-type"), "image/png");
   assert.deepEqual(bytes, png);
 });
+
+test("生成延迟不会拖慢工作台原图缓存", async (context) => {
+  const { server } = createMockServer({
+    imageSize: 128,
+    delayMs: 150,
+    logging: false,
+  });
+  context.after(() => server.close());
+  const port = await listen(server);
+
+  const sourceStartedAt = performance.now();
+  const sourceResponse = await fetch(`http://127.0.0.1:${port}/test.png`);
+  await sourceResponse.arrayBuffer();
+  const sourceDuration = performance.now() - sourceStartedAt;
+
+  const generationStartedAt = performance.now();
+  const generationResponse = await fetch(`http://127.0.0.1:${port}/v1/images/edits`, {
+    method: "POST",
+    body: "image",
+  });
+  await generationResponse.arrayBuffer();
+  const generationDuration = performance.now() - generationStartedAt;
+
+  assert.ok(sourceDuration < 120, `原图接口不应等待生成延迟，实际 ${sourceDuration}ms`);
+  assert.ok(generationDuration >= 140, `生成接口应保留模拟延迟，实际 ${generationDuration}ms`);
+});

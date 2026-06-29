@@ -4,6 +4,20 @@ import path from "node:path";
 import { request } from "undici";
 import { DownstreamError } from "../shared/errors.js";
 
+function publicInput(input) {
+  const { _inputFile, _inputContentType, ...safe } = input;
+  return safe;
+}
+
+function responseHeaders(headers = {}) {
+  // 只显示排错真正需要的响应头，避免把供应商 Cookie 等无关数据带到 UI。
+  return {
+    "content-type": headers["content-type"] ?? null,
+    "content-length": headers["content-length"] ?? null,
+    "x-request-id": headers["x-request-id"] ?? headers["request-id"] ?? null,
+  };
+}
+
 export class RequestExecutor {
   constructor({
     timeoutMs = 120_000,
@@ -17,7 +31,42 @@ export class RequestExecutor {
     this.requestFn = requestFn;
   }
 
+  describeRequest(task, key) {
+    const isEdit = Boolean(task.input._inputFile);
+    const endpoint = isEdit ? this.imageEditPath : this.imagePath;
+    return {
+      method: "POST",
+      url: `${key.baseUrl}${endpoint}`,
+      keyID: key.keyID,
+      headers: {
+        authorization: "Bearer [REDACTED]",
+        "content-type": isEdit ? "multipart/form-data; boundary=<auto>" : "application/json",
+        "x-relay-task-id": task.id,
+        "x-relay-key-id": key.keyID,
+      },
+      body: isEdit
+        ? {
+          encoding: "multipart/form-data",
+          fields: {
+            model: task.input.model,
+            prompt: task.input.prompt,
+            size: task.input.size ?? "1024x1024",
+            n: String(task.input.n ?? 1),
+            image: {
+              filename: path.basename(task.input._inputFile),
+              contentType: task.input._inputContentType ?? "image/png",
+            },
+          },
+        }
+        : { encoding: "application/json", value: publicInput(task.input) },
+    };
+  }
+
   async execute(task, key) {
+    return (await this.executeDetailed(task, key)).result;
+  }
+
+  async executeDetailed(task, key) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     timer.unref?.();
@@ -41,7 +90,15 @@ export class RequestExecutor {
           responseBody: body,
         });
       }
-      return body;
+      return {
+        result: body,
+        responseTrace: {
+          ok: true,
+          statusCode: response.statusCode,
+          headers: responseHeaders(response.headers),
+          body,
+        },
+      };
     } catch (error) {
       if (error instanceof DownstreamError) throw error;
       const timedOut = error?.name === "AbortError";

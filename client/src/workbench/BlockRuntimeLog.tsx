@@ -1,5 +1,7 @@
+import { Fragment } from "react";
 import type { WorkbenchBlock } from "../models";
 import type { BlockLogEntry, SystemStatus } from "../runtime";
+import "./runtime-log-details.css";
 
 interface Props {
   block: WorkbenchBlock;
@@ -10,14 +12,20 @@ interface Props {
 
 const pendingStatuses = new Set(["pending", "running"]);
 
+function imageNumber(block: WorkbenchBlock, imageId: string) {
+  const index = block.images.findIndex((image) => image.imageId === imageId);
+  return index < 0 ? "—" : String(index + 1).padStart(2, "0");
+}
+
+function formatValue(value: unknown) {
+  if (typeof value === "string") return value;
+  return JSON.stringify(value, null, 2) ?? String(value);
+}
+
 function getDiagnosis(block: WorkbenchBlock, status: SystemStatus | undefined, model: string) {
   const pending = block.images.filter((image) => pendingStatuses.has(image.state.status)).length;
-  if (!pending) {
-    return { level: "ok", text: "IDLE / 当前 Block 没有进入 Core 队列的任务。" };
-  }
-  if (!status) {
-    return { level: "warning", text: "CONNECTING / 正在读取 Core、Queue 与 KeyPool 状态…" };
-  }
+  if (!pending) return { level: "ok", text: "IDLE / 当前 Block 没有进入 Core 队列的任务。" };
+  if (!status) return { level: "warning", text: "CONNECTING / 正在读取 Core、Queue 与 KeyPool 状态…" };
   if (status.keys.total === 0) {
     return {
       level: "error",
@@ -68,11 +76,7 @@ export function BlockRuntimeLog({ block, entries, systemStatus, model }: Props) 
     <aside className="block-runtime-log">
       <div className="block-runtime-log__header">
         <span>BLOCK RUNTIME LOG / {block.blockId}</span>
-        <div>
-          <b>WAIT {pending}</b>
-          <b>DONE {done}</b>
-          <b>FAIL {failed}</b>
-        </div>
+        <div><b>WAIT {pending}</b><b>DONE {done}</b><b>FAIL {failed}</b></div>
       </div>
 
       <div className={`runtime-diagnosis runtime-diagnosis--${diagnosis.level}`}>
@@ -82,16 +86,31 @@ export function BlockRuntimeLog({ block, entries, systemStatus, model }: Props) 
 
       <div className="runtime-table" role="log" aria-live="polite">
         <div className="runtime-row runtime-row--head">
-          <span>TIME</span><span>IMAGE</span><span>STATE / EVENT</span><span>TASK ID</span><span>DETAIL</span>
+          <span>TIME</span><span>IMAGE #</span><span>STATE / EVENT</span><span>TASK ID</span><span>DETAIL</span>
         </div>
-        {entries.slice(0, 12).map((entry) => (
-          <div className={`runtime-row runtime-row--${entry.level}`} key={entry.id}>
-            <code>{entry.time}</code>
-            <code>{entry.imageId}</code>
-            <code>{entry.event}</code>
-            <code title={entry.taskId}>{entry.taskId || "—"}</code>
-            <code>{entry.message}</code>
-          </div>
+        {entries.slice(0, 30).map((entry) => (
+          <Fragment key={entry.id}>
+            <div className={`runtime-row runtime-row--${entry.level}`}>
+              <code>{entry.time}</code>
+              <code>{imageNumber(block, entry.imageId)}</code>
+              <code>{entry.event}</code>
+              <code title={entry.taskId}>{entry.taskId || "—"}</code>
+              <code>{entry.message}</code>
+            </div>
+            {entry.details?.length ? (
+              <div className={`runtime-payload-row runtime-payload-row--${entry.level}`}>
+                {entry.details.map((detail, index) => (
+                  <details
+                    key={`${entry.id}-${detail.label}-${index}`}
+                    open={entry.event.includes("REQUEST") || entry.event.includes("RESPONSE")}
+                  >
+                    <summary>{detail.label}</summary>
+                    <pre>{formatValue(detail.value)}</pre>
+                  </details>
+                ))}
+              </div>
+            ) : null}
+          </Fragment>
         ))}
         {block.images.map((image) => (
           <div className="runtime-row" key={`state-${image.imageId}`}>
@@ -100,7 +119,7 @@ export function BlockRuntimeLog({ block, entries, systemStatus, model }: Props) 
                 ? new Date(image.state.updatedAt).toLocaleTimeString("zh-CN", { hour12: false })
                 : "—"}
             </code>
-            <code>{image.imageId}</code>
+            <code>{imageNumber(block, image.imageId)}</code>
             <code>{image.state.status.toUpperCase()}</code>
             <code title={image.state.taskId ?? undefined}>{image.state.taskId || "—"}</code>
             <code>{describeImage(block, image.imageId, systemStatus)}</code>

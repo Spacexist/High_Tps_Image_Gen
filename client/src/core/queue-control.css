@@ -12,8 +12,18 @@
 .queue-resize-form input:focus { border-color: #667347; box-shadow: 0 0 0 3px rgba(200,255,85,.05); }
 .queue-resize-note { margin: 12px 0 0; color: #626b72; font-size: .68rem; line-height: 1.6; }
 
-/* ATTEMPT 列已移除：Core 每个任务只执行一次。 */
-.task-table__row { grid-template-columns: 75px 90px minmax(210px, 1.5fr) minmax(120px, .7fr) minmax(180px, 1fr) 60px; min-width: 960px; }
+/* 两块面板只显示当前活动队列，不再展示完成历史和事件日志。 */
+.live-queue-panels { display: grid; grid-template-columns: 1fr; gap: 18px; margin-top: 18px; }
+.live-queue-panels .task-monitor { margin-top: 0; }
+.queue-live-dot { color: var(--lime); font: 500 .54rem "DM Mono", monospace; letter-spacing: .06em; }
+
+@media (min-width: 1300px) {
+  .live-queue-panels { grid-template-columns: 1fr 1fr; }
+  .live-queue-panels .task-table__row {
+    grid-template-columns: 68px 78px minmax(200px, 1.4fr) minmax(105px, .7fr) minmax(135px, 1fr) 72px;
+    min-width: 820px;
+  }
+}
 
 @media (max-width: 720px) {
   .queue-capacity-grid { grid-template-columns: 1fr 1fr; }

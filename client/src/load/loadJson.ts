@@ -1,5 +1,6 @@
 interface ImportImage {
-  imageId: string;
+  // 兼容旧 JSON；服务端会忽略该值并按数组顺序生成 01、02、03……
+  imageId?: string;
   url: string;
   prompt?: string;
 }
@@ -21,6 +22,9 @@ export async function loadJsonFile(file: File): Promise<ImportBlock[]> {
     if (!item.blockId || !item.listing) throw new Error(`第 ${index + 1} 个 Block 缺少 blockId 或 listing`);
     if (!Array.isArray(item.images) || item.images.length < 1 || item.images.length > 20) {
       throw new Error(`Block ${item.blockId} 必须有 1–20 张图片`);
+    }
+    for (const [imageIndex, image] of item.images.entries()) {
+      if (!image?.url) throw new Error(`Block ${item.blockId} 的第 ${imageIndex + 1} 张图片缺少 url`);
     }
   }
   return blocks as ImportBlock[];

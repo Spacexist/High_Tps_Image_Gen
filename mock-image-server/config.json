@@ -1,7 +1,7 @@
 {
   "host": "0.0.0.0",
   "port": 3100,
-  "delayMs": 0,
+  "delayMs": 3000,
   "imageSize": 512,
   "logging": true
 }

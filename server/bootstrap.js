@@ -39,7 +39,7 @@ export async function buildApp({
     if (request.method === "OPTIONS") return reply.code(204).send();
   });
 
-  // 装配顺序明确分层：原始 Key -> 物理 KeyPool -> Core Queue -> 工作台持久层 -> HTTP API。
+  // 装配顺序明确分层：原始 Key -> 物理 execution_pool -> waiting_queue -> 工作台持久层 -> HTTP API。
   const keyStore = new KeyStore(config.keys.storePath);
   const keyManager = await new KeyManager({ store: keyStore, logger: app.log }).init();
   const healthTester = new HealthTester({
@@ -48,7 +48,11 @@ export async function buildApp({
     requestFn: healthRequestFn,
     logger: app.log,
   });
-  const queue = new TaskQueue(config.queue);
+  const queue = new TaskQueue({
+    ...config.queue,
+    // execution_pool 容量始终跟随当前可用的物理 Key 副本，无需重启或手工同步。
+    executionPoolCapacity: () => keyManager.getStats().total,
+  });
   const resultStore = new ResultStore(config.result);
   const workbenchStore = await new WorkbenchStore(config.workbench.cachePath).init();
   const imageCache = await new ImageCache(config.workbench).init();
@@ -72,7 +76,6 @@ export async function buildApp({
     queue,
     keyManager,
     runner,
-    dispatchRatePerSecond: config.queue.dispatchRatePerSecond,
     logger: app.log,
   });
   const services = {

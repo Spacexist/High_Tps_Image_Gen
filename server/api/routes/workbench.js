@@ -1,7 +1,7 @@
 // 工作台 API：JSON 导入、磁盘缓存读取、prompt 更新和单图任务提交。
 import { createReadStream } from "node:fs";
 
-export async function workbenchRoutes(app, { workbenchService }) {
+export async function workbenchRoutes(app, { workbenchService, queue }) {
   app.get("/api/workbench", async () => workbenchService.snapshot());
 
   app.post("/api/workbench/import", async (request, reply) => {
@@ -17,10 +17,11 @@ export async function workbenchRoutes(app, { workbenchService }) {
     schema: {
       body: {
         type: "object",
-        required: ["blockId", "imageId", "model"],
+        required: ["blockId", "imageId", "imageUrl", "model"],
         properties: {
           blockId: { type: "string", minLength: 1 },
           imageId: { type: "string", minLength: 1 },
+          imageUrl: { type: "string", format: "uri" },
           model: { type: "string", minLength: 1 },
           prompt: { type: "string" },
           size: { type: "string" },
@@ -29,6 +30,13 @@ export async function workbenchRoutes(app, { workbenchService }) {
     },
   }, async (request, reply) => {
     const task = await workbenchService.submit(request.body);
+    // 只有 Node 的 HTTP finish 触发后，才把 202 标为真正 SENT。
+    reply.raw.once("finish", () => queue.recordResponseSent(task.id, {
+      kind: "accepted",
+      endpoint: "/api/workbench/tasks",
+      statusCode: 202,
+      body: { id: task.id, status: task.status },
+    }));
     return reply.code(202).send(task);
   });
 

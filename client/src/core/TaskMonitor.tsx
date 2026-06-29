@@ -1,8 +1,7 @@
-import type { CoreTaskItem } from "./types";
+import type { CoreTaskItem, QueueSnapshot } from "./types";
 
 interface Props {
-  tasks: CoreTaskItem[];
-  total: number;
+  snapshot?: QueueSnapshot;
   busyTaskId: string;
   onCancel: (task: CoreTaskItem) => Promise<void>;
 }
@@ -11,19 +10,36 @@ function time(value: string | null) {
   return value ? new Date(value).toLocaleTimeString("zh-CN", { hour12: false }) : "—";
 }
 
-export function TaskMonitor({ tasks, total, busyTaskId, onCancel }: Props) {
+function QueueTable({
+  title,
+  eyebrow,
+  tasks,
+  limit,
+  cancellable,
+  busyTaskId,
+  onCancel,
+}: {
+  title: string;
+  eyebrow: string;
+  tasks: CoreTaskItem[];
+  limit: number;
+  cancellable: boolean;
+  busyTaskId: string;
+  onCancel: (task: CoreTaskItem) => Promise<void>;
+}) {
   return (
     <section className="core-section task-monitor">
       <div className="section-heading">
-        <div><span>CORE TASK QUEUE</span><h2>任务流</h2></div>
-        <small>{total} TASKS · LATEST {tasks.length}</small>
+        <div><span>{eyebrow}</span><h2>{title}</h2></div>
+        <small>LIVE {tasks.length}/{limit}</small>
       </div>
       {!tasks.length ? (
-        <div className="core-empty">Core 队列为空。工作台提交任务后会实时出现在这里。</div>
+        <div className="core-empty">{title}当前为空。</div>
       ) : (
         <div className="task-table">
           <div className="task-table__row task-table__head">
-            <span>UPDATED</span><span>STATUS</span><span>TASK / IMAGE</span><span>MODEL</span><span>KEY ID</span><span />
+            <span>UPDATED</span><span>STATUS</span><span>TASK / IMAGE</span>
+            <span>MODEL</span><span>KEY ID</span><span />
           </div>
           {tasks.map((task) => (
             <div className="task-table__row" key={task.id}>
@@ -39,22 +55,44 @@ export function TaskMonitor({ tasks, total, busyTaskId, onCancel }: Props) {
               </div>
               <code>{task.input.model}</code>
               <code title={task.keyID || ""}>{task.keyID || "WAITING"}</code>
-              <button
-                className="button button--small"
-                disabled={busyTaskId === task.id || task.status !== "pending"}
-                onClick={() => void onCancel(task)}
-              >
-                取消
-              </button>
-              {task.error && (
-                <small className="task-error">
-                  {task.error.code || "ERROR"} · {task.error.message}
-                </small>
-              )}
+              {cancellable ? (
+                <button
+                  className="button button--small"
+                  disabled={busyTaskId === task.id}
+                  onClick={() => void onCancel(task)}
+                >
+                  取消
+                </button>
+              ) : <span className="queue-live-dot">EXECUTING</span>}
             </div>
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+export function TaskMonitor({ snapshot, busyTaskId, onCancel }: Props) {
+  return (
+    <div className="live-queue-panels">
+      <QueueTable
+        title="execution_pool"
+        eyebrow="CORE EXECUTION POOL"
+        tasks={snapshot?.executing ?? []}
+        limit={snapshot?.capacity.executionPoolLimit ?? 0}
+        cancellable={false}
+        busyTaskId={busyTaskId}
+        onCancel={onCancel}
+      />
+      <QueueTable
+        title="排队队列"
+        eyebrow="CORE WAITING QUEUE"
+        tasks={snapshot?.waiting ?? []}
+        limit={snapshot?.capacity.waitingLimit ?? 0}
+        cancellable
+        busyTaskId={busyTaskId}
+        onCancel={onCancel}
+      />
+    </div>
   );
 }

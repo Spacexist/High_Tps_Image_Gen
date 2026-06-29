@@ -1,29 +1,28 @@
 import type { TaskStatus } from "../models";
 
+export interface QueueStats {
+  total: number;
+  waiting: number;
+  waitingLimit: number;
+  executing: number;
+  executionPoolLimit: number;
+  maxPending: number;
+  remainingCapacity: number;
+  overCapacity: number;
+  byStatus: Record<Exclude<TaskStatus, "ready">, number>;
+}
+
 export interface CoreStatus {
   status: "ok";
   uptimeSeconds: number;
   queue: QueueStats;
   keys: KeyStats;
-  dispatcher: {
-    inFlight: number;
-    dispatchRatePerSecond: number;
-    tokens: number;
-  };
+  dispatcher: { inFlight: number };
   diagnostics: {
     code: string;
     severity: "ok" | "warning" | "error";
     message: string;
   };
-}
-
-export interface QueueStats {
-  total: number;
-  waiting: number;
-  maxPending: number;
-  remainingCapacity: number;
-  overCapacity: number;
-  byStatus: Record<Exclude<TaskStatus, "ready">, number>;
 }
 
 export interface KeyStats {
@@ -54,11 +53,7 @@ export interface KeySource {
   generation: number;
   lastCheckedAt: string | null;
   lastError: string | null;
-  pool: {
-    available: number;
-    leased: number;
-    total: number;
-  };
+  pool: { available: number; leased: number; total: number };
 }
 
 export interface KeysResponse {
@@ -90,6 +85,7 @@ export interface CoreTaskItem {
     prompt: string;
     blockId?: string;
     imageId?: string;
+    imageUrl?: string;
     size?: string;
   };
   createdAt: string;
@@ -97,24 +93,44 @@ export interface CoreTaskItem {
   startedAt: string | null;
   completedAt: string | null;
   keyID: string | null;
-  error: { code?: string; message: string } | null;
+  error: { code?: string; message: string; downstreamStatus?: number } | null;
+  // 仅由 Core 历史接口返回，内容已在后端完成认证信息脱敏。
+  trace?: {
+    request?: unknown;
+    response?: unknown;
+  };
 }
 
-export interface TasksResponse {
-  items: CoreTaskItem[];
-  page: number;
-  limit: number;
-  total: number;
+export interface QueueSnapshot {
+  executing: CoreTaskItem[];
+  waiting: CoreTaskItem[];
+  capacity: QueueStats;
+  updatedAt: string;
 }
 
-export interface CoreEvent {
+export type QueueEventLevel = "info" | "success" | "warning" | "error";
+
+// 每个对象只表示一个不可变生命周期事件，同一 Task 会对应多行。
+export interface QueueEvent {
   id: string;
-  time: string;
-  type: "TASK" | "KEY" | "SYSTEM";
-  subject: string;
+  timestamp: string;
   event: string;
+  level: QueueEventLevel;
+  taskId: string | null;
+  blockId: string | null;
+  imageId: string | null;
+  status: Exclude<TaskStatus, "ready"> | null;
+  keyID: string | null;
   detail: string;
-  level: "info" | "warning" | "error" | "success";
+  payload: unknown;
+  queue: QueueStats;
+}
+
+export interface QueueEventsResponse {
+  items: QueueEvent[];
+  total: number;
+  limit: number;
+  updatedAt: string;
 }
 
 export interface CreateKeyInput {

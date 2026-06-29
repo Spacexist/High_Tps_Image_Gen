@@ -1,0 +1,49 @@
+/* 结构化请求/响应作为表格行的附属面板，默认展开时仍保持可滚动和可复制。 */
+.runtime-table {
+  max-height: 620px;
+}
+
+.runtime-payload-row {
+  display: grid;
+  gap: 6px;
+  margin: 2px 16px 9px 100px;
+  padding: 8px 10px;
+  border: 1px solid #20272d;
+  border-left: 2px solid #66849b;
+  border-radius: 7px;
+  background: #070a0c;
+}
+
+.runtime-payload-row--success { border-left-color: var(--lime); }
+.runtime-payload-row--error { border-left-color: #ff674e; }
+.runtime-payload-row--warning { border-left-color: #dca541; }
+
+.runtime-payload-row details {
+  min-width: 0;
+}
+
+.runtime-payload-row summary {
+  cursor: pointer;
+  color: #aeb7bf;
+  font: 500 .62rem "DM Mono", monospace;
+  letter-spacing: .07em;
+  user-select: none;
+}
+
+.runtime-payload-row pre {
+  max-height: 320px;
+  overflow: auto;
+  margin: 8px 0 2px;
+  padding: 11px;
+  color: #aeb8c0;
+  background: #0c1013;
+  border: 1px solid #1d242a;
+  border-radius: 6px;
+  font: .65rem/1.55 "DM Mono", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .runtime-payload-row { margin-left: 16px; }
+}

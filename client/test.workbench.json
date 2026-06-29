@@ -1,0 +1,64 @@
+[
+  {
+    "blockId": "ceramic-vase-001",
+    "listing": "Minimal Handmade Ceramic Vase for Modern Home Decor",
+    "prompt": "Transform the source into a premium ecommerce product photo on a warm beige studio background, soft natural shadow, realistic materials, clean composition, no text, square image.",
+    "images": [
+      {
+        "imageId": "front",
+        "url": "https://picsum.photos/seed/workbench-vase-front/1024/1024"
+      },
+      {
+        "imageId": "detail",
+        "url": "https://picsum.photos/seed/workbench-vase-detail/1024/1024",
+        "prompt": "Create a close-up ecommerce detail photo emphasizing handmade ceramic texture and subtle glaze, warm neutral lighting, no text."
+      },
+      {
+        "imageId": "lifestyle",
+        "url": "https://picsum.photos/seed/workbench-vase-life/1024/1024",
+        "prompt": "Place the product in a tasteful Scandinavian living room scene with soft daylight and restrained neutral colors, no text."
+      }
+    ]
+  },
+  {
+    "blockId": "travel-mug-002",
+    "listing": "Insulated Stainless Steel Travel Mug with Leak Resistant Lid",
+    "prompt": "Create a sharp commercial product image with a cool gray background, controlled reflections, realistic stainless steel, soft contact shadow, no logo, no text.",
+    "images": [
+      {
+        "imageId": "hero",
+        "url": "https://picsum.photos/seed/workbench-mug-hero/1024/1024"
+      },
+      {
+        "imageId": "lid",
+        "url": "https://picsum.photos/seed/workbench-mug-lid/1024/1024",
+        "prompt": "Show a macro product detail focused on the leak-resistant lid mechanism, crisp studio lighting, clean gray background, no text."
+      },
+      {
+        "imageId": "handheld",
+        "url": "https://picsum.photos/seed/workbench-mug-hand/1024/1024"
+      },
+      {
+        "imageId": "outdoor",
+        "url": "https://picsum.photos/seed/workbench-mug-outdoor/1024/1024",
+        "prompt": "Create an outdoor lifestyle scene on a wooden camping table at sunrise, product remains the clear subject, realistic photography, no text."
+      }
+    ]
+  },
+  {
+    "blockId": "desk-lamp-003",
+    "listing": "Adjustable LED Desk Lamp for Reading and Home Office",
+    "prompt": "Turn the source into a modern marketplace-ready product photo, dark charcoal studio background, elegant rim lighting, realistic finish, no text, square composition.",
+    "images": [
+      {
+        "imageId": "angle",
+        "url": "https://picsum.photos/seed/workbench-lamp-angle/1024/1024"
+      },
+      {
+        "imageId": "workspace",
+        "url": "https://picsum.photos/seed/workbench-lamp-work/1024/1024",
+        "prompt": "Place the lamp on a clean modern home-office desk at evening, warm task light visible, realistic shadows, no people, no text."
+      }
+    ]
+  }
+]

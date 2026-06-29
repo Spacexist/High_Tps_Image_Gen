@@ -1,0 +1,64 @@
+/* 单一 Queue 日志：摘要适合快速扫描，展开后显示完整请求和执行时间线。 */
+.core-queue-log-entry {
+  border-left: 2px solid transparent;
+  border-bottom: 1px solid #20262a;
+}
+
+.core-queue-log-entry > summary {
+  border-left: 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.core-queue-log-entry > summary::-webkit-details-marker {
+  display: none;
+}
+
+.core-queue-log-entry > summary::before {
+  content: "›";
+  position: absolute;
+  right: 10px;
+  color: #596169;
+  transition: transform .15s ease;
+}
+
+.core-queue-log-entry[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.core-queue-log-entry:hover > summary {
+  background: rgba(255, 255, 255, .018);
+}
+
+.core-queue-log-entry__payload {
+  padding: 12px 14px 15px;
+  background: #090c0f;
+  border-top: 1px solid #1d2327;
+}
+
+.core-queue-log-entry__payload > span {
+  color: var(--lime);
+  font: 500 .55rem "DM Mono", monospace;
+  letter-spacing: .08em;
+}
+
+.core-queue-log-entry__payload pre {
+  max-height: 360px;
+  margin: 9px 0 0;
+  padding: 13px;
+  overflow: auto;
+  color: #aab3ba;
+  background: #07090b;
+  border: 1px solid #22292e;
+  border-radius: 8px;
+  font: .63rem/1.65 "DM Mono", monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .core-log-row {
+    grid-template-columns: 65px 82px minmax(115px, .8fr) minmax(130px, 1fr) minmax(220px, 1.6fr);
+    min-width: 760px;
+  }
+}

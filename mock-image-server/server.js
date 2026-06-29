@@ -50,12 +50,15 @@ export function createMockServer(config) {
         "x-mock-fixed-image": "true",
       };
 
-      if (config.delayMs > 0) {
+      // /test.png 是工作台导入阶段读取的“原图”，不能套用生成耗时。
+      // delayMs 只模拟真正的上游图片生成/编辑请求，否则 300 张导入会被平白拖慢数分钟。
+      const isSourceAsset = parsedUrl.pathname === "/test.png";
+      if (!isSourceAsset && config.delayMs > 0) {
         await new Promise((resolve) => setTimeout(resolve, config.delayMs));
       }
 
       // 浏览器访问该地址时直接显示固定图片；Core 的所有其他地址返回兼容 JSON。
-      if (parsedUrl.pathname === "/test.png") {
+      if (isSourceAsset) {
         response.writeHead(200, {
           ...commonHeaders,
           "content-type": "image/png",
@@ -89,7 +92,7 @@ export function createMockServer(config) {
         method: request.method,
         path: parsedUrl.pathname,
         requestBytes,
-        responseBytes: parsedUrl.pathname === "/test.png" ? png.length : base64.length,
+        responseBytes: isSourceAsset ? png.length : base64.length,
         durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
       }, "Fixed TEST image returned");
     } catch (error) {

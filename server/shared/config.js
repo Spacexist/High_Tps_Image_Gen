@@ -9,7 +9,7 @@ export const projectRoot = path.resolve(here, "../..");
 
 const defaults = {
   server: { host: "0.0.0.0", port: 3000, logger: true },
-  queue: { dispatchRatePerSecond: 300, maxPending: 10_000, terminalTtlMs: 30 * 60_000 },
+  queue: { maxPending: 10_000, terminalTtlMs: 30 * 60_000 },
   request: {
     timeoutMs: 120_000,
     imagePath: "/v1/images/generations",
@@ -62,7 +62,6 @@ export function normalizeConfig(input, baseDir = projectRoot) {
   const config = merge(defaults, input);
   for (const key of [
     "server.port",
-    "queue.dispatchRatePerSecond",
     "queue.maxPending",
     "queue.terminalTtlMs",
     "request.timeoutMs",

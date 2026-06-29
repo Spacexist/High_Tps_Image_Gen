@@ -19,13 +19,13 @@ export function QueueControl({ queue, busy, onResize }: Props) {
   return (
     <section className="core-section queue-control">
       <div className="section-heading">
-        <div><span>RUNTIME QUEUE CAPACITY</span><h2>动态扩缩容</h2></div>
-        <small>RESTART → CONFIG.JSON</small>
+        <div><span>WAITING QUEUE CAPACITY</span><h2>动态扩缩容</h2></div>
+        <small>POOL BY KEY COPIES · QUEUE BY CONFIG</small>
       </div>
       <div className="queue-capacity-grid">
-        <div><span>WAITING</span><strong>{queue?.waiting ?? "—"}</strong></div>
-        <div><span>MAX PENDING</span><strong>{queue?.maxPending ?? "—"}</strong></div>
-        <div><span>REMAINING</span><strong>{queue?.remainingCapacity ?? "—"}</strong></div>
+        <div><span>EXECUTING</span><strong>{queue ? `${queue.executing}/${queue.executionPoolLimit}` : "—"}</strong></div>
+        <div><span>WAITING</span><strong>{queue ? `${queue.waiting}/${queue.waitingLimit}` : "—"}</strong></div>
+        <div><span>POOL CAPACITY</span><strong>{queue?.executionPoolLimit ?? "—"}</strong></div>
         <div className={queue?.overCapacity ? "is-over" : ""}>
           <span>OVER CAPACITY</span><strong>{queue?.overCapacity ?? "—"}</strong>
         </div>
@@ -38,7 +38,7 @@ export function QueueControl({ queue, busy, onResize }: Props) {
         }}
       >
         <label>
-          <span>新的 maxPending</span>
+          <span>waiting_queue 容量</span>
           <input
             type="number"
             min={1}
@@ -53,7 +53,7 @@ export function QueueControl({ queue, busy, onResize }: Props) {
         </button>
       </form>
       <p className="queue-resize-note">
-        缩容不会删除现有任务；若等待数高于新上限，Core 会暂停接收新任务，直到队列回落。
+        execution_pool 由健康 Key 副本数动态决定并直接吃满；这里只调整 waiting_queue，队列满后新请求返回 503 系统繁忙。
       </p>
     </section>
   );

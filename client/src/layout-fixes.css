@@ -1,0 +1,5 @@
+.block-card__actions { display: flex; align-items: center; gap: 18px; }
+
+@media (max-width: 720px) {
+  .block-card__header, .block-card__actions { align-items: flex-start; flex-direction: column; }
+}

@@ -1,20 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { RuntimeConfig } from "../models";
 import { apiJson } from "../request/api";
 import { KeyCard } from "./KeyCard";
 import { KeyForm } from "./KeyForm";
 import { PoolMap } from "./PoolMap";
 import { QueueControl } from "./QueueControl";
+import { QueueLog } from "./QueueLog";
 import { TaskMonitor } from "./TaskMonitor";
 import type {
-  CoreEvent,
   CoreStatus,
   CoreTaskItem,
   CreateKeyInput,
   KeysResponse,
   KeySource,
   PoolSnapshot,
-  TasksResponse,
+  QueueEventsResponse,
+  QueueSnapshot,
 } from "./types";
 
 interface Props {
@@ -22,16 +23,12 @@ interface Props {
 }
 
 const emptyPool: PoolSnapshot = { items: [], total: 0, truncated: false, limit: 500 };
-
-function clock() {
-  return new Date().toLocaleTimeString("zh-CN", { hour12: false });
-}
-
-function taskLevel(status: string): CoreEvent["level"] {
-  if (status === "completed") return "success";
-  if (status === "failed" || status === "cancelled") return "error";
-  return "info";
-}
+const emptyEvents: QueueEventsResponse = {
+  items: [],
+  total: 0,
+  limit: 300,
+  updatedAt: "",
+};
 
 export function CoreDashboard({ config }: Props) {
   const [status, setStatus] = useState<CoreStatus>();
@@ -47,57 +44,27 @@ export function CoreDashboard({ config }: Props) {
     },
   });
   const [pool, setPool] = useState<PoolSnapshot>(emptyPool);
-  const [tasks, setTasks] = useState<TasksResponse>({
-    items: [],
-    page: 1,
-    limit: 100,
-    total: 0,
-  });
-  const [events, setEvents] = useState<CoreEvent[]>([]);
+  const [queueSnapshot, setQueueSnapshot] = useState<QueueSnapshot>();
+  const [queueEvents, setQueueEvents] = useState<QueueEventsResponse>(emptyEvents);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-  const knownTasks = useRef(new Map<string, string>());
-
-  function addEvent(event: Omit<CoreEvent, "id" | "time">) {
-    setEvents((current) => [{
-      ...event,
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      time: clock(),
-    }, ...current].slice(0, 120));
-  }
 
   const refresh = useCallback(async () => {
     try {
-      const [nextStatus, nextKeys, nextPool, nextTasks] = await Promise.all([
+      // 活动 Queue 与追加式事件流分别读取；事件不会被 Task 的最终状态覆盖。
+      const [nextStatus, nextKeys, nextPool, nextQueue, nextEvents] = await Promise.all([
         apiJson<CoreStatus>("/api/status"),
         apiJson<KeysResponse>("/api/keys"),
         apiJson<PoolSnapshot>("/api/keys/pool?limit=500"),
-        apiJson<TasksResponse>("/api/tasks?page=1&limit=100"),
+        apiJson<QueueSnapshot>("/api/queue/tasks"),
+        apiJson<QueueEventsResponse>("/api/queue/events?limit=300"),
       ]);
       setStatus(nextStatus);
       setKeys(nextKeys);
       setPool(nextPool);
-      setTasks(nextTasks);
+      setQueueSnapshot(nextQueue);
+      setQueueEvents(nextEvents);
       setError("");
-
-      // 轮询只在任务状态变化时写事件，避免产生重复噪声。
-      const changes: CoreEvent[] = [];
-      for (const task of nextTasks.items) {
-        const previous = knownTasks.current.get(task.id);
-        if (previous !== task.status) {
-          knownTasks.current.set(task.id, task.status);
-          changes.push({
-            id: `${task.id}-${task.status}-${task.updatedAt}`,
-            time: new Date(task.updatedAt).toLocaleTimeString("zh-CN", { hour12: false }),
-            type: "TASK",
-            subject: task.input.imageId || task.id,
-            event: task.status.toUpperCase(),
-            detail: `${task.input.model} · ${task.keyID || "等待 Key"} · 单次执行`,
-            level: taskLevel(task.status),
-          });
-        }
-      }
-      if (changes.length) setEvents((current) => [...changes, ...current].slice(0, 120));
     } catch (reason) {
       setError((reason as Error).message);
     }
@@ -105,24 +72,18 @@ export function CoreDashboard({ config }: Props) {
 
   useEffect(() => {
     void refresh();
-    const timer = window.setInterval(() => void refresh(), 1_500);
+    // Core 管理界面每秒同步 execution_pool、waiting_queue 和后端事件流。
+    const timer = window.setInterval(() => void refresh(), 1_000);
     return () => window.clearInterval(timer);
   }, [refresh]);
 
-  async function action(
-    name: string,
-    work: () => Promise<unknown>,
-    event: Omit<CoreEvent, "id" | "time">,
-  ) {
+  async function action(name: string, work: () => Promise<unknown>) {
     setBusy(name);
     try {
       await work();
-      addEvent(event);
       await refresh();
     } catch (reason) {
-      const message = (reason as Error).message;
-      setError(message);
-      addEvent({ ...event, event: `${event.event}_FAILED`, detail: message, level: "error" });
+      setError((reason as Error).message);
       throw reason;
     } finally {
       setBusy("");
@@ -130,47 +91,23 @@ export function CoreDashboard({ config }: Props) {
   }
 
   async function createKey(input: CreateKeyInput) {
-    await action(
-      "create",
-      () => apiJson("/api/keys", { method: "POST", body: JSON.stringify(input) }),
-      {
-        type: "KEY",
-        subject: input.id || input.name,
-        event: "REGISTERED",
-        detail: `concurrency=${input.concurrency} · ${input.models.join(", ")}`,
-        level: "success",
-      },
-    );
+    await action("create", () => apiJson("/api/keys", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }));
   }
 
   async function updateConcurrency(source: KeySource, concurrency: number) {
-    await action(
-      `update:${source.id}`,
-      () => apiJson(`/api/keys/${encodeURIComponent(source.id)}`, {
-        method: "PUT",
-        body: JSON.stringify({ concurrency }),
-      }),
-      {
-        type: "KEY",
-        subject: source.id,
-        event: "POOL_REBUILT",
-        detail: `${source.concurrency} → ${concurrency} copies`,
-        level: "success",
-      },
-    );
+    await action(`update:${source.id}`, () => apiJson(`/api/keys/${encodeURIComponent(source.id)}`, {
+      method: "PUT",
+      body: JSON.stringify({ concurrency }),
+    }));
   }
 
   async function toggleKey(source: KeySource) {
     await action(
       `toggle:${source.id}`,
       () => apiJson(`/api/keys/${encodeURIComponent(source.id)}/toggle`, { method: "POST" }),
-      {
-        type: "KEY",
-        subject: source.id,
-        event: source.enabled ? "DISABLED" : "ENABLED",
-        detail: "KeyPool 已按新状态重建",
-        level: "warning",
-      },
     );
   }
 
@@ -178,13 +115,6 @@ export function CoreDashboard({ config }: Props) {
     await action(
       `health:${source.id}`,
       () => apiJson(`/api/keys/${encodeURIComponent(source.id)}/health-test`, { method: "POST" }),
-      {
-        type: "KEY",
-        subject: source.id,
-        event: "HEALTH_TEST",
-        detail: `GET ${source.baseUrl}`,
-        level: "info",
-      },
     );
   }
 
@@ -193,76 +123,41 @@ export function CoreDashboard({ config }: Props) {
     await action(
       `delete:${source.id}`,
       () => apiJson(`/api/keys/${encodeURIComponent(source.id)}`, { method: "DELETE" }),
-      {
-        type: "KEY",
-        subject: source.id,
-        event: "DELETED",
-        detail: "原始 Key 与 KeyPool 副本已删除",
-        level: "error",
-      },
     );
   }
 
   async function healthTestAll() {
-    await action(
-      "health:all",
-      () => apiJson("/api/keys/health-test", { method: "POST" }),
-      {
-        type: "SYSTEM",
-        subject: "KEYPOOL",
-        event: "HEALTH_TEST_ALL",
-        detail: `${keys.items.filter((item) => item.enabled).length} 个不重复原始 Key`,
-        level: "info",
-      },
-    );
+    await action("health:all", () => apiJson("/api/keys/health-test", { method: "POST" }));
   }
 
   async function resizeQueue(maxPending: number) {
-    const previous = status?.queue.maxPending ?? 0;
-    await action(
-      "queue:resize",
-      () => apiJson("/api/queue", {
-        method: "PATCH",
-        body: JSON.stringify({ maxPending }),
-      }),
-      {
-        type: "SYSTEM",
-        subject: "QUEUE",
-        event: "RESIZED",
-        detail: `${previous} → ${maxPending} pending slots`,
-        level: "success",
-      },
-    );
+    await action("queue:resize", () => apiJson("/api/queue", {
+      method: "PATCH",
+      body: JSON.stringify({ maxPending }),
+    }));
   }
 
   async function cancelTask(task: CoreTaskItem) {
     await action(
       `task:${task.id}`,
       () => apiJson(`/api/tasks/${task.id}`, { method: "DELETE" }),
-      {
-        type: "TASK",
-        subject: task.input.imageId || task.id,
-        event: "CANCELLED",
-        detail: task.id,
-        level: "warning",
-      },
     );
   }
 
-  const queue = status?.queue.byStatus;
+  const queue = status?.queue;
   const diagnosis = status?.diagnostics;
 
   return (
     <main className="core-dashboard">
       <header className="hero core-hero">
         <div>
-          <span className="eyebrow">CORE / QUEUE / PHYSICAL KEYPOOL</span>
+          <span className="eyebrow">CORE / EXECUTION POOL / WAITING QUEUE</span>
           <h1>Core Control</h1>
-          <p>Core 只负责排队和单次派发；任务租用唯一 keyID，终态后立即归还副本。</p>
+          <p>Core 只负责等待与单次派发；execution_pool 直接使用全部可用 Key 副本。</p>
         </div>
         <div className={`core-live ${error ? "core-live--error" : ""}`}>
           <span className="pulse" />
-          {error ? "CONNECTION ERROR" : "LIVE · 1.5s"}
+          {error ? "CONNECTION ERROR" : "LIVE · 1s"}
         </div>
       </header>
 
@@ -272,27 +167,32 @@ export function CoreDashboard({ config }: Props) {
 
       <section className="core-overview">
         <div>
-          <span>QUEUE</span>
-          <strong>{status ? `${status.queue.waiting}/${status.queue.maxPending}` : "—"}</strong>
-          <small>WAITING / LIMIT</small>
+          <span>EXECUTING</span>
+          <strong>{queue ? `${queue.executing}/${queue.executionPoolLimit}` : "—"}</strong>
+          <small>ACTIVE / KEY COPIES</small>
         </div>
-        <div><span>IN FLIGHT</span><strong>{status?.dispatcher.inFlight ?? "—"}</strong><small>RUNNING</small></div>
-        <div><span>TPS LIMIT</span><strong>{status?.dispatcher.dispatchRatePerSecond ?? "—"}</strong><small>TOKEN BUCKET</small></div>
+        <div>
+          <span>WAITING</span>
+          <strong>{queue ? `${queue.waiting}/${queue.waitingLimit}` : "—"}</strong>
+          <small>QUEUED / LIMIT</small>
+        </div>
+        <div><span>QUEUE SPACE</span><strong>{queue ? `${queue.remainingCapacity}/${queue.waitingLimit}` : "—"}</strong><small>AVAILABLE / LIMIT</small></div>
         <div><span>KEY SOURCES</span><strong>{keys.stats.healthySources}/{keys.stats.sources}</strong><small>HEALTHY</small></div>
         <div><span>KEY COPIES</span><strong>{keys.stats.available}/{keys.stats.total}</strong><small>AVAILABLE</small></div>
       </section>
 
       <section className="core-flow">
         <div className="flow-node">
-          <span>01</span><strong>QUEUE</strong>
-          <small>{queue?.pending ?? 0} pending · {status?.queue.remainingCapacity ?? 0} slots free</small>
+          <span>01</span><strong>WAITING_QUEUE</strong>
+          <small>{queue?.waiting ?? 0}/{queue?.waitingLimit ?? 0} queued</small>
         </div>
         <i>→</i>
-        <div className="flow-node"><span>02</span><strong>DISPATCHER</strong><small>{status?.dispatcher.tokens ?? 0} tokens · {status?.dispatcher.inFlight ?? 0} active</small></div>
+        <div className="flow-node">
+          <span>02</span><strong>EXECUTION_POOL</strong>
+          <small>{queue?.executing ?? 0}/{queue?.executionPoolLimit ?? 0} active</small>
+        </div>
         <i>→</i>
-        <div className="flow-node"><span>03</span><strong>KEYPOOL</strong><small>{keys.stats.available} free · {keys.stats.leased} leased</small></div>
-        <i>→</i>
-        <div className="flow-node"><span>04</span><strong>UPSTREAM</strong><small>{config.ui.default_model} · one shot</small></div>
+        <div className="flow-node"><span>03</span><strong>UPSTREAM</strong><small>{config.ui.default_model} · one shot</small></div>
       </section>
 
       <div className={`core-diagnosis core-diagnosis--${diagnosis?.severity || "ok"}`}>
@@ -301,7 +201,7 @@ export function CoreDashboard({ config }: Props) {
       </div>
 
       <QueueControl
-        queue={status?.queue}
+        queue={queue}
         busy={busy === "queue:resize"}
         onResize={resizeQueue}
       />
@@ -341,31 +241,15 @@ export function CoreDashboard({ config }: Props) {
 
       <PoolMap sources={keys.items} snapshot={pool} />
       <TaskMonitor
-        tasks={tasks.items}
-        total={tasks.total}
+        snapshot={queueSnapshot}
         busyTaskId={busy.replace("task:", "")}
         onCancel={cancelTask}
       />
-
-      <section className="core-section core-event-log">
-        <div className="section-heading">
-          <div><span>CORE EVENT LOG</span><h2>状态变化</h2></div>
-          <button className="button button--ghost" onClick={() => setEvents([])}>清空</button>
-        </div>
-        <div className="core-log-table">
-          <div className="core-log-row core-log-head">
-            <span>TIME</span><span>TYPE</span><span>SUBJECT</span><span>EVENT</span><span>DETAIL</span>
-          </div>
-          {events.map((event) => (
-            <div className={`core-log-row core-log-row--${event.level}`} key={event.id}>
-              <code>{event.time}</code><code>{event.type}</code><code>{event.subject}</code><code>{event.event}</code><code>{event.detail}</code>
-            </div>
-          ))}
-          {!events.length && (
-            <div className="core-empty core-empty--small">等待 Key 或 Task 状态变化…</div>
-          )}
-        </div>
-      </section>
+      <QueueLog
+        events={queueEvents.items}
+        total={queueEvents.total}
+        updatedAt={queueEvents.updatedAt}
+      />
     </main>
   );
 }

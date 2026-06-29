@@ -7,6 +7,8 @@ export interface SystemStatus {
   queue: {
     total: number;
     waiting: number;
+    executing: number;
+    executionPoolLimit: number;
     maxPending: number;
     remainingCapacity: number;
     overCapacity: number;
@@ -28,13 +30,19 @@ export interface SystemStatus {
   };
 }
 
-// 每条记录描述一次前端窗口或 Core 任务状态变更。
+export interface LogDetail {
+  label: string;
+  value: unknown;
+}
+
+// 每条记录描述一次入队、Core 状态或真实上游请求/响应。
 export interface BlockLogEntry {
   id: string;
   time: string;
   imageId: string;
   event: string;
   message: string;
+  details?: LogDetail[];
   status?: TaskStatus;
   taskId?: string;
   level: "info" | "warning" | "error" | "success";

@@ -11,6 +11,15 @@ async function readJson(file, fallback) {
   }
 }
 
+async function renameIfPresent(source, target) {
+  if (source === target) return;
+  try {
+    await rename(source, target);
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
+}
+
 export class WorkbenchStore {
   constructor(cachePath) {
     this.root = cachePath;
@@ -27,12 +36,12 @@ export class WorkbenchStore {
       readJson(this.blocksFile, []),
       readJson(this.tasksFile, {}),
     ]);
+    await this.#migrateNumericImageIds();
     // 内存队列无法跨进程恢复；retry_wait 仅用于兼容旧版缓存，不再是当前 Core 状态。
     for (const task of Object.values(this.tasks)) {
       if (["pending", "running", "retry_wait"].includes(task.status)) {
         Object.assign(task, { status: "ready", taskId: null, error: null });
       }
-      // 清理旧版自动重试计数，避免前端继续展示已经移除的语义。
       delete task.attempts;
     }
     await this.save();
@@ -63,5 +72,37 @@ export class WorkbenchStore {
     const temp = `${file}.${process.pid}.tmp`;
     await writeFile(temp, `${JSON.stringify(value, null, 2)}\n`, "utf8");
     await rename(temp, file);
+  }
+
+  async #migrateNumericImageIds() {
+    // 已落盘的 front/detail/lifestyle 在启动时一次性迁移，保留原图、结果图和状态。
+    const migratedTasks = {};
+    for (const block of this.blocks) {
+      for (const [index, image] of block.images.entries()) {
+        const oldImageId = image.imageId;
+        const imageId = String(index + 1).padStart(2, "0");
+        const task = this.tasks[`${block.blockId}/${oldImageId}`];
+
+        if (image.input?.extension) {
+          await renameIfPresent(
+            path.join(this.root, "inputs", block.blockId, `${oldImageId}${image.input.extension}`),
+            path.join(this.root, "inputs", block.blockId, `${imageId}${image.input.extension}`),
+          );
+        }
+        if (task?.output?.extension) {
+          await renameIfPresent(
+            path.join(this.root, "outputs", block.blockId, `${oldImageId}${task.output.extension}`),
+            path.join(this.root, "outputs", block.blockId, `${imageId}${task.output.extension}`),
+          );
+        }
+
+        image.imageId = imageId;
+        if (task) {
+          task.imageId = imageId;
+          migratedTasks[`${block.blockId}/${imageId}`] = task;
+        }
+      }
+    }
+    this.tasks = migratedTasks;
   }
 }
